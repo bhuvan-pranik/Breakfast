@@ -144,22 +144,21 @@ USING (
 );
 
 -- Scanner accounts policies
-CREATE POLICY "Admins can manage scanner accounts"
-ON scanner_accounts FOR ALL
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM scanner_accounts sa
-    WHERE sa.user_id = auth.uid()
-    AND sa.role = 'admin'
-    AND sa.is_active = true
-  )
-);
+-- IMPORTANT: Avoid recursive policies that query scanner_accounts while checking scanner_accounts permissions
+-- This causes 500 Internal Server Error due to infinite recursion
 
-CREATE POLICY "Users can read their own scanner account"
+-- Allow public username lookup for login (safe - passwords are in auth.users)
+CREATE POLICY "Allow public username lookup"
 ON scanner_accounts FOR SELECT
+TO anon, authenticated
+USING (true);
+
+-- Allow authenticated users to update their own last_login timestamp
+CREATE POLICY "Users can update own login time"
+ON scanner_accounts FOR UPDATE
 TO authenticated
-USING (user_id = auth.uid());
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
 
 -- Attendance records policies
 CREATE POLICY "Authenticated users can insert attendance"
@@ -308,21 +307,53 @@ Then use the app's "Regenerate QR Code" feature to generate the correct QR code.
 
 ## Troubleshooting
 
-### Can't login
-- Verify user exists in auth.users
-- Verify scanner_accounts entry exists with correct user_id
-- Check username matches
-- Ensure is_active = true
+### Can't login - 422 Unprocessable Content
+- User email must be exactly: `username@breakfast-system.local`
+- User must be confirmed (email_confirmed_at not NULL)
+- Password must match what was set during user creation
+- Check if user exists: `SELECT email FROM auth.users;`
+- Confirm user: `UPDATE auth.users SET email_confirmed_at = NOW(), confirmed_at = NOW() WHERE email = 'admin@breakfast-system.local';`
+
+### Can't login - 406 Not Acceptable
+- RLS policy missing for anonymous username lookup
+- Run the scanner_accounts SELECT policy above to fix
+
+### Can't login - 500 Internal Server Error
+- Caused by recursive RLS policies on scanner_accounts
+- **Solution**: Drop and recreate scanner_accounts policies (see below)
+- Avoid policies that query scanner_accounts while checking scanner_accounts permissions
+
+**Fix for 500 error:**
+```sql
+-- Drop recursive policies
+DROP POLICY IF EXISTS "Admins can manage scanner accounts" ON scanner_accounts;
+DROP POLICY IF EXISTS "Users can read their own scanner account" ON scanner_accounts;
+DROP POLICY IF EXISTS "Allow username lookup for login" ON scanner_accounts;
+
+-- Recreate with simplified non-recursive policies
+CREATE POLICY "Allow public username lookup"
+ON scanner_accounts FOR SELECT
+TO anon, authenticated
+USING (true);
+
+CREATE POLICY "Users can update own login time"
+ON scanner_accounts FOR UPDATE
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+```
 
 ### RLS errors
 - Verify policies are created correctly
 - Check user has appropriate role
 - Ensure user_id matches between auth.users and scanner_accounts
+- For employees table, ensure admin user has scanner_accounts entry with role='admin'
 
 ### Connection errors
 - Verify SUPABASE_URL is correct
-- Verify SUPABASE_ANON_KEY is the anon/public key
+- Verify SUPABASE_ANON_KEY is the anon/public key (not service_role key)
 - Check network connection
+- Verify .env.local is loaded (restart dev server if you just created it)
 
 ## Next Steps
 
