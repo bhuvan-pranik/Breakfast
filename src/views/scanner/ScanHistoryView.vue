@@ -2,7 +2,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAttendanceStore } from '@/stores/attendance.store'
 import { useAuthStore } from '@/stores/auth.store'
-import { formatDate, formatTime } from '@/utils/formatters'
+import { formatTime } from '@/utils/formatters'
+import type { AttendanceRecord } from '@/types'
 
 const attendanceStore = useAttendanceStore()
 const authStore = useAuthStore()
@@ -16,16 +17,28 @@ onMounted(async () => {
 
 const loadHistory = async () => {
   if (authStore.scannerId) {
-    await attendanceStore.fetchScannerHistory(authStore.scannerId, selectedDate.value)
+    await attendanceStore.fetchRecords({ 
+      scannerId: authStore.scannerId, 
+      dateFrom: selectedDate.value,
+      dateTo: selectedDate.value
+    })
   }
 }
 
 const filteredRecords = computed(() => {
   if (statusFilter.value === 'all') {
-    return attendanceStore.attendanceRecords
+    return attendanceStore.records
   }
-  return attendanceStore.attendanceRecords.filter(r => r.status === statusFilter.value)
+  return attendanceStore.records.filter((r: AttendanceRecord) => r.status === statusFilter.value)
 })
+
+const successCount = computed(() => 
+  filteredRecords.value.filter((r: AttendanceRecord) => r.status === 'success').length
+)
+
+const duplicateCount = computed(() => 
+  filteredRecords.value.filter((r: AttendanceRecord) => r.status === 'duplicate').length
+)
 
 const getStatusClass = (status: string) => {
   const classes: Record<string, string> = {
@@ -84,11 +97,11 @@ const getStatusLabel = (status: string) => {
           <span class="stat-label">Total Scans</span>
         </div>
         <div class="stat success">
-          <span class="stat-value">{{ filteredRecords.filter(r => r.status === 'success').length }}</span>
+          <span class="stat-value">{{ successCount }}</span>
           <span class="stat-label">Successful</span>
         </div>
         <div class="stat warning">
-          <span class="stat-value">{{ filteredRecords.filter(r => r.status === 'duplicate').length }}</span>
+          <span class="stat-value">{{ duplicateCount }}</span>
           <span class="stat-label">Duplicates</span>
         </div>
       </div>
@@ -105,11 +118,9 @@ const getStatusLabel = (status: string) => {
             {{ formatTime(record.scan_timestamp) }}
           </div>
           <div class="scan-details">
-            <div class="employee-name">{{ record.employee?.name || 'Unknown' }}</div>
+            <div class="employee-name">{{ record.employee_phone }}</div>
             <div class="employee-meta">
-              <span v-if="record.employee">{{ record.employee.department }}</span>
-              <span class="separator">•</span>
-              <span>{{ record.employee?.phone || 'N/A' }}</span>
+              <span>Phone: {{ record.employee_phone }}</span>
             </div>
           </div>
           <div class="scan-status">

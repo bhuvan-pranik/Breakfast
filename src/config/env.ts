@@ -2,38 +2,6 @@
  * Type-safe environment variable access
  */
 
-interface ImportMetaEnv {
-  // Supabase
-  readonly VITE_SUPABASE_URL: string
-  readonly VITE_SUPABASE_ANON_KEY: string
-
-  // Application
-  readonly VITE_QR_SALT: string
-  readonly VITE_APP_NAME: string
-  readonly VITE_APP_VERSION: string
-  readonly VITE_APP_ENV: 'development' | 'staging' | 'production'
-
-  // Feature Flags
-  readonly VITE_ENABLE_REALTIME: string
-  readonly VITE_ENABLE_ANALYTICS: string
-  readonly VITE_ENABLE_DEBUG: string
-
-  // GitHub Pages
-  readonly VITE_BASE_URL: string
-  readonly VITE_GITHUB_REPO: string
-
-  // Vite defaults
-  readonly BASE_URL: string
-  readonly MODE: string
-  readonly DEV: boolean
-  readonly PROD: boolean
-  readonly SSR: boolean
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv
-}
-
 // Validated environment configuration
 export const env = {
   // Supabase

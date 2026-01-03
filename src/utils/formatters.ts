@@ -5,7 +5,8 @@
 /**
  * Format date to readable string
  */
-export function formatDate(date: string | Date, format: 'short' | 'long' = 'short'): string {
+export function formatDate(date: string | Date | null | undefined, format: 'short' | 'long' = 'short'): string {
+  if (!date) return '-'
   const d = typeof date === 'string' ? new Date(date) : date
 
   if (format === 'long') {

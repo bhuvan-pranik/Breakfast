@@ -27,11 +27,11 @@ const filteredEmployees = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(emp => 
-      emp.name.toLowerCase().includes(query) ||
+      (emp.name?.toLowerCase() || '').includes(query) ||
       emp.phone.includes(query) ||
-      emp.employee_id.toLowerCase().includes(query) ||
-      emp.email.toLowerCase().includes(query) ||
-      emp.department.toLowerCase().includes(query)
+      (emp.employee_id?.toLowerCase() || '').includes(query) ||
+      (emp.email?.toLowerCase() || '').includes(query) ||
+      (emp.department?.toLowerCase() || '').includes(query)
     )
   }
 
@@ -76,10 +76,13 @@ const deleteEmployee = async (employee: Employee) => {
 
 const toggleStatus = async (employee: Employee) => {
   try {
-    await employeeStore.updateEmployee(employee.phone, {
-      is_active: !employee.is_active
-    })
-    uiStore.showSuccess(`Employee ${employee.is_active ? 'deactivated' : 'activated'}`)
+    if (employee.is_active) {
+      await employeeStore.deleteEmployee(employee.phone)
+      uiStore.showSuccess('Employee deactivated')
+    } else {
+      await employeeStore.activateEmployee(employee.phone)
+      uiStore.showSuccess('Employee activated')
+    }
   } catch (error: any) {
     uiStore.showError(error.message || 'Failed to update employee status')
   }
@@ -87,11 +90,15 @@ const toggleStatus = async (employee: Employee) => {
 
 const downloadQR = async (employee: Employee) => {
   try {
+    if (!employee.qr_code) {
+      uiStore.showError('Employee does not have a QR code')
+      return
+    }
     const { qrcodeService } = await import('@/services/qrcode.service')
     const dataUrl = await qrcodeService.generateQRCodeImage(employee.qr_code)
     
     const link = document.createElement('a')
-    link.download = `${employee.name}-QR.png`
+    link.download = `${employee.name || employee.phone}-QR.png`
     link.href = dataUrl
     link.click()
     
@@ -101,7 +108,7 @@ const downloadQR = async (employee: Employee) => {
   }
 }
 
-const handleBulkUpload = async (count: number) => {
+const handleBulkUpload = async (_count: number) => {
   showBulkUpload.value = false
   await employeeStore.fetchEmployees()
 }

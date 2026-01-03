@@ -4,7 +4,7 @@
  */
 
 import { supabase } from './supabase'
-import type { User, Session } from '@supabase/supabase-js'
+import type { Session } from '@supabase/supabase-js'
 import type { ScannerAccount, LoginCredentials, AuthResponse } from '@/types'
 
 class AuthService {
@@ -20,7 +20,7 @@ class AuthService {
     // 1. Find scanner account by username
     const { data: scannerAccount, error: accountError } = await supabase
       .from('scanner_accounts')
-      .select('id, username, user_id, role, is_active')
+      .select('id, username, user_id, role, is_active, created_at, last_login_at')
       .eq('username', credentials.username)
       .eq('is_active', true)
       .single()

@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useEmployeeStore } from '@/stores/employee.store'
 import { useUIStore } from '@/stores/ui.store'
 import { validatePhone, validateEmail } from '@/utils/validators'
-import type { EmployeeFormData } from '@/types'
+import type { EmployeeFormData, CreateEmployeeInput } from '@/types'
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -57,7 +57,7 @@ const parseCSV = async (file: File): Promise<EmployeeFormData[]> => {
         // Skip header row
         const dataLines = lines.slice(1)
         
-        const employees: EmployeeFormData[] = dataLines.map((line, index) => {
+        const employees: EmployeeFormData[] = dataLines.map((line) => {
           const [phone, name, department, employee_id, email] = line.split(',').map(s => s.trim())
           return {
             phone: phone || '',
@@ -104,7 +104,7 @@ const uploadFile = async () => {
     
     // Validate and upload each employee
     for (let i = 0; i < employees.length; i++) {
-      const emp = employees[i]
+      const emp = employees[i]!
       const rowNum = i + 2 // +2 because of header and 0-indexing
       
       try {
@@ -141,7 +141,7 @@ const uploadFile = async () => {
         }
         
         // Create employee
-        await employeeStore.createEmployee(emp)
+        await employeeStore.createEmployee(emp as CreateEmployeeInput)
         uploadResults.value.successful++
       } catch (error: any) {
         // Check if it's a duplicate/conflict error (409)

@@ -21,11 +21,11 @@ export const useScannerStore = defineStore('scanner', () => {
   // GETTERS
   // ============================================================================
   const activeScanners = computed(() => 
-    scanners.value.filter(s => s.is_active)
+    scanners.value.filter((s: ScannerAccount) => s.is_active)
   )
 
   const inactiveScanners = computed(() => 
-    scanners.value.filter(s => !s.is_active)
+    scanners.value.filter((s: ScannerAccount) => !s.is_active)
   )
 
   const scannerCount = computed(() => scanners.value.length)
@@ -98,7 +98,7 @@ export const useScannerStore = defineStore('scanner', () => {
 
     try {
       const updated = await scannerService.update(id, input)
-      const index = scanners.value.findIndex(s => s.id === id)
+      const index = scanners.value.findIndex((s: ScannerAccount) => s.id === id)
       if (index !== -1) {
         scanners.value[index] = updated
       }
@@ -120,8 +120,8 @@ export const useScannerStore = defineStore('scanner', () => {
 
     try {
       await scannerService.deactivate(id)
-      const index = scanners.value.findIndex(s => s.id === id)
-      if (index !== -1) {
+      const index = scanners.value.findIndex((s: ScannerAccount) => s.id === id)
+      if (index !== -1 && scanners.value[index]) {
         scanners.value[index].is_active = false
       }
     } catch (e) {
@@ -141,8 +141,8 @@ export const useScannerStore = defineStore('scanner', () => {
 
     try {
       await scannerService.activate(id)
-      const index = scanners.value.findIndex(s => s.id === id)
-      if (index !== -1) {
+      const index = scanners.value.findIndex((s: ScannerAccount) => s.id === id)
+      if (index !== -1 && scanners.value[index]) {
         scanners.value[index].is_active = true
       }
     } catch (e) {

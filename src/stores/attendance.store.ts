@@ -24,15 +24,15 @@ export const useAttendanceStore = defineStore('attendance', () => {
   // ============================================================================
   const todayRecords = computed(() => {
     const today = new Date().toISOString().split('T')[0]
-    return records.value.filter(r => r.scan_date === today)
+    return records.value.filter((r: AttendanceRecord) => r.scan_date === today)
   })
 
   const successfulScansToday = computed(() => 
-    todayRecords.value.filter(r => r.status === 'success').length
+    todayRecords.value.filter((r: AttendanceRecord) => r.status === 'success').length
   )
 
   const duplicateScansToday = computed(() => 
-    todayRecords.value.filter(r => r.status === 'duplicate').length
+    todayRecords.value.filter((r: AttendanceRecord) => r.status === 'duplicate').length
   )
 
   const totalScansToday = computed(() => todayRecords.value.length)

@@ -34,11 +34,11 @@ export const useEmployeeStore = defineStore('employee', () => {
   // GETTERS
   // ============================================================================
   const activeEmployees = computed(() => 
-    employees.value.filter(e => e.is_active)
+    employees.value.filter((e: Employee) => e.is_active)
   )
 
   const inactiveEmployees = computed(() => 
-    employees.value.filter(e => !e.is_active)
+    employees.value.filter((e: Employee) => !e.is_active)
   )
 
   const filteredEmployees = computed(() => {
@@ -46,19 +46,19 @@ export const useEmployeeStore = defineStore('employee', () => {
 
     // Filter by active status
     if (filters.value.isActive !== undefined) {
-      filtered = filtered.filter(e => e.is_active === filters.value.isActive)
+      filtered = filtered.filter((e: Employee) => e.is_active === filters.value.isActive)
     }
 
     // Filter by department
     if (filters.value.department) {
-      filtered = filtered.filter(e => e.department === filters.value.department)
+      filtered = filtered.filter((e: Employee) => e.department === filters.value.department)
     }
 
     // Filter by search
     if (filters.value.search) {
       const search = filters.value.search.toLowerCase()
-      filtered = filtered.filter(e => 
-        e.name.toLowerCase().includes(search) ||
+      filtered = filtered.filter((e: Employee) => 
+        (e.name?.toLowerCase() || '').includes(search) ||
         e.phone.includes(search)
       )
     }
@@ -144,7 +144,7 @@ export const useEmployeeStore = defineStore('employee', () => {
 
     try {
       const updated = await employeeService.update(phone, input)
-      const index = employees.value.findIndex(e => e.phone === phone)
+      const index = employees.value.findIndex((e: Employee) => e.phone === phone)
       if (index !== -1) {
         employees.value[index] = updated
       }
@@ -169,8 +169,8 @@ export const useEmployeeStore = defineStore('employee', () => {
 
     try {
       await employeeService.softDelete(phone)
-      const index = employees.value.findIndex(e => e.phone === phone)
-      if (index !== -1) {
+      const index = employees.value.findIndex((e: Employee) => e.phone === phone)
+      if (index !== -1 && employees.value[index]) {
         employees.value[index].is_active = false
       }
     } catch (e) {
@@ -190,8 +190,8 @@ export const useEmployeeStore = defineStore('employee', () => {
 
     try {
       await employeeService.activate(phone)
-      const index = employees.value.findIndex(e => e.phone === phone)
-      if (index !== -1) {
+      const index = employees.value.findIndex((e: Employee) => e.phone === phone)
+      if (index !== -1 && employees.value[index]) {
         employees.value[index].is_active = true
       }
     } catch (e) {
@@ -211,7 +211,7 @@ export const useEmployeeStore = defineStore('employee', () => {
 
     try {
       const updated = await employeeService.regenerateQRCode(phone)
-      const index = employees.value.findIndex(e => e.phone === phone)
+      const index = employees.value.findIndex((e: Employee) => e.phone === phone)
       if (index !== -1) {
         employees.value[index] = updated
       }
