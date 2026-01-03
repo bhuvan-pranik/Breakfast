@@ -242,10 +242,10 @@ VALUES (
 -- Signup a user first, then run:
 INSERT INTO scanner_accounts (user_id, username, role, is_active)
 SELECT 
-  id,
-  'admin',
-  'admin',
-  true
+    id,
+    'admin',        -- username for login
+    'admin',        -- role (admin or scanner)
+    true
 FROM auth.users
 WHERE email = 'admin@breakfast-system.local';
 ```

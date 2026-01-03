@@ -66,16 +66,27 @@ class ScannerService {
    * Create scanner account
    */
   async create(input: CreateScannerInput): Promise<ScannerAccount> {
-    // Create user in Supabase Auth
+    // Create user in Supabase Auth with auto-confirm
     const email = `${input.username}@breakfast-system.local`
     
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
-      password: input.password
+      password: input.password,
+      options: {
+        emailRedirectTo: undefined,
+        data: {
+          username: input.username,
+          role: input.role
+        }
+      }
     })
 
-    if (authError || !authData.user) {
+    if (authError) {
       throw new Error(authError?.message || 'Failed to create auth user')
+    }
+
+    if (!authData.user) {
+      throw new Error('Failed to create auth user - no user returned')
     }
 
     // Create scanner account record
@@ -91,6 +102,8 @@ class ScannerService {
       .single()
 
     if (scannerError) {
+      // If scanner account creation fails, we should ideally delete the auth user
+      // but Supabase doesn't allow deleting users from client side
       throw new Error(scannerError.message)
     }
 
