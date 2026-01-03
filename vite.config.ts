@@ -5,6 +5,9 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  // Set base to repo name for GitHub Pages
+  // Change 'Breakfast-v3' to your actual repo name
+  base: process.env.NODE_ENV === 'production' ? '/Breakfast-v3/' : '/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
