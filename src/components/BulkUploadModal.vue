@@ -19,10 +19,12 @@ const isUploading = ref(false)
 const uploadResults = ref<{
   successful: number
   failed: number
+  skipped: number
   errors: string[]
 }>({
   successful: 0,
   failed: 0,
+  skipped: 0,
   errors: []
 })
 const showResults = ref(false)
@@ -47,23 +49,30 @@ const parseCSV = async (file: File): Promise<EmployeeFormData[]> => {
         const text = e.target?.result as string
         const lines = text.split('\n').filter(line => line.trim())
         
+        if (lines.length === 0) {
+          reject(new Error('CSV file is empty'))
+          return
+        }
+        
         // Skip header row
         const dataLines = lines.slice(1)
         
-        const employees: EmployeeFormData[] = dataLines.map(line => {
+        const employees: EmployeeFormData[] = dataLines.map((line, index) => {
           const [phone, name, department, employee_id, email] = line.split(',').map(s => s.trim())
           return {
-            phone,
-            name,
-            department,
-            employee_id,
-            email,
+            phone: phone || '',
+            name: name || null,
+            department: department || null,
+            employee_id: employee_id || null,
+            email: email || null,
             is_active: true
           }
         })
         
+        console.log(`Parsed ${employees.length} employees from CSV`)
         resolve(employees)
       } catch (error) {
+        console.error('CSV parse error:', error)
         reject(new Error('Failed to parse CSV file'))
       }
     }
@@ -85,10 +94,13 @@ const uploadFile = async () => {
   }
 
   isUploading.value = true
-  uploadResults.value = { successful: 0, failed: 0, errors: [] }
+  uploadResults.value = { successful: 0, failed: 0, skipped: 0, errors: [] }
 
   try {
     const employees = await parseCSV(selectedFile.value)
+    
+    // Track phone numbers already in the CSV to detect duplicates within the file
+    const phoneSet = new Set<string>()
     
     // Validate and upload each employee
     for (let i = 0; i < employees.length; i++) {
@@ -96,29 +108,56 @@ const uploadFile = async () => {
       const rowNum = i + 2 // +2 because of header and 0-indexing
       
       try {
-        // Validate
+        // Validate - only phone is required
         if (!emp.phone || !validatePhone(emp.phone)) {
           throw new Error(`Row ${rowNum}: Invalid phone number`)
         }
-        if (!emp.name || emp.name.length < 2) {
-          throw new Error(`Row ${rowNum}: Invalid name`)
+        
+        // Check for duplicate within CSV file
+        if (phoneSet.has(emp.phone)) {
+          uploadResults.value.skipped++
+          uploadResults.value.errors.push(`Row ${rowNum}: Duplicate phone ${emp.phone} in CSV (skipped)`)
+          continue
         }
-        if (!emp.department) {
-          throw new Error(`Row ${rowNum}: Department required`)
+        phoneSet.add(emp.phone)
+        
+        // Check if employee already exists in database
+        const existingEmployee = employeeStore.employees.find(e => e.phone === emp.phone)
+        if (existingEmployee) {
+          uploadResults.value.skipped++
+          uploadResults.value.errors.push(`Row ${rowNum}: Employee with phone ${emp.phone} already exists (skipped)`)
+          continue
         }
-        if (!emp.employee_id || emp.employee_id.length < 2) {
-          throw new Error(`Row ${rowNum}: Employee ID required`)
+        
+        // Optional field validation
+        if (emp.name && emp.name.length < 2) {
+          throw new Error(`Row ${rowNum}: Name too short`)
         }
-        if (!emp.email || !validateEmail(emp.email)) {
-          throw new Error(`Row ${rowNum}: Invalid email`)
+        if (emp.employee_id && emp.employee_id.length < 2) {
+          throw new Error(`Row ${rowNum}: Employee ID too short`)
+        }
+        if (emp.email && !validateEmail(emp.email)) {
+          throw new Error(`Row ${rowNum}: Invalid email format`)
         }
         
         // Create employee
         await employeeStore.createEmployee(emp)
         uploadResults.value.successful++
       } catch (error: any) {
-        uploadResults.value.failed++
-        uploadResults.value.errors.push(error.message)
+        // Check if it's a duplicate/conflict error (409)
+        const errorMessage = error.message || ''
+        if (errorMessage.includes('duplicate') || 
+            errorMessage.includes('already exists') || 
+            errorMessage.includes('unique constraint') ||
+            errorMessage.includes('409') ||
+            error.code === '23505') { // PostgreSQL unique violation code
+          uploadResults.value.skipped++
+          uploadResults.value.errors.push(`Row ${rowNum}: Employee with phone ${emp.phone} already exists (skipped)`)
+        } else {
+          uploadResults.value.failed++
+          uploadResults.value.errors.push(error.message)
+        }
+        console.error(`Upload error at row ${rowNum}:`, error)
       }
     }
     
@@ -221,6 +260,10 @@ const close = () => {
             <div class="stat success">
               <span class="stat-value">{{ uploadResults.successful }}</span>
               <span class="stat-label">Successful</span>
+            </div>
+            <div class="stat warning">
+              <span class="stat-value">{{ uploadResults.skipped }}</span>
+              <span class="stat-label">Skipped (Duplicates)</span>
             </div>
             <div class="stat error">
               <span class="stat-value">{{ uploadResults.failed }}</span>
@@ -458,7 +501,7 @@ const close = () => {
 
 .stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 1rem;
 }
 
@@ -471,6 +514,11 @@ const close = () => {
 .stat.success {
   background: #e8f5e9;
   border-left: 4px solid #4caf50;
+}
+
+.stat.warning {
+  background: #fff3e0;
+  border-left: 4px solid #ff9800;
 }
 
 .stat.error {
