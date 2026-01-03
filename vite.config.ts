@@ -6,8 +6,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
   plugins: [vue()],
   // Set base to repo name for GitHub Pages
-  // Change 'Breakfast-v3' to your actual repo name
-  base: process.env.NODE_ENV === 'production' ? '/Breakfast-v3/' : '/',
+  base: process.env.NODE_ENV === 'production' ? '/Breakfast/' : '/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
