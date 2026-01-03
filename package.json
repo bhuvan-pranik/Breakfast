@@ -1,0 +1,35 @@
+{
+  "name": "breakfast-v3",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "QR-based breakfast counter attendance tracking system",
+  "author": "Your Team",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit",
+    "lint": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.89.0",
+    "crypto-js": "^4.2.0",
+    "html5-qrcode": "^2.3.8",
+    "pinia": "^3.0.4",
+    "qrcode": "^1.5.4",
+    "vue": "^3.5.24",
+    "vue-router": "4"
+  },
+  "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/node": "^24.10.1",
+    "@types/qrcode": "^1.5.6",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/tsconfig": "^0.8.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4",
+    "vue-tsc": "^3.1.4"
+  }
+}
