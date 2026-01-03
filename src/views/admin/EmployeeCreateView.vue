@@ -3,8 +3,8 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEmployeeStore } from '@/stores/employee.store'
 import { useUIStore } from '@/stores/ui.store'
-import { DEPARTMENTS, GENDERS } from '@/utils/constants'
-import { validatePhone } from '@/utils/validators'
+import { DEPARTMENTS } from '@/utils/constants'
+import { validatePhone, validateEmail } from '@/utils/validators'
 import type { EmployeeFormData } from '@/types'
 
 const router = useRouter()
@@ -15,14 +15,17 @@ const formData = reactive<EmployeeFormData>({
   phone: '',
   name: '',
   department: '',
-  gender: 'Male',
+  employee_id: '',
+  email: '',
   is_active: true
 })
 
 const errors = reactive({
   phone: '',
   name: '',
-  department: ''
+  department: '',
+  employee_id: '',
+  email: ''
 })
 
 const isSubmitting = ref(false)
@@ -33,6 +36,8 @@ const validateForm = (): boolean => {
   errors.phone = ''
   errors.name = ''
   errors.department = ''
+  errors.employee_id = ''
+  errors.email = ''
 
   if (!formData.phone) {
     errors.phone = 'Phone number is required'
@@ -51,6 +56,21 @@ const validateForm = (): boolean => {
 
   if (!formData.department) {
     errors.department = 'Department is required'
+    return false
+  }
+
+  if (!formData.employee_id || formData.employee_id.trim().length < 2) {
+    errors.employee_id = 'Employee ID is required'
+    return false
+  }
+
+  if (!formData.email) {
+    errors.email = 'Email is required'
+    return false
+  }
+
+  if (!validateEmail(formData.email)) {
+    errors.email = 'Please enter a valid email address'
     return false
   }
 
@@ -160,14 +180,30 @@ const cancel = () => {
           <span v-if="errors.department" class="error-message">{{ errors.department }}</span>
         </div>
 
-        <!-- Gender -->
+        <!-- Employee ID -->
         <div class="form-group">
-          <label for="gender">Gender</label>
-          <select id="gender" v-model="formData.gender">
-            <option v-for="gender in GENDERS" :key="gender" :value="gender">
-              {{ gender }}
-            </option>
-          </select>
+          <label for="employee_id">Employee ID <span class="required">*</span></label>
+          <input
+            id="employee_id"
+            v-model="formData.employee_id"
+            type="text"
+            placeholder="Employee ID"
+            :class="{ 'error': errors.employee_id }"
+          />
+          <span v-if="errors.employee_id" class="error-message">{{ errors.employee_id }}</span>
+        </div>
+
+        <!-- Email -->
+        <div class="form-group">
+          <label for="email">Email <span class="required">*</span></label>
+          <input
+            id="email"
+            v-model="formData.email"
+            type="email"
+            placeholder="employee@example.com"
+            :class="{ 'error': errors.email }"
+          />
+          <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
         </div>
 
         <!-- Active Status -->

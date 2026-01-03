@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useEmployeeStore } from '@/stores/employee.store'
 import { useUIStore } from '@/stores/ui.store'
-import { validatePhone } from '@/utils/validators'
+import { validatePhone, validateEmail } from '@/utils/validators'
 import type { EmployeeFormData } from '@/types'
 
 const emit = defineEmits<{
@@ -51,12 +51,13 @@ const parseCSV = async (file: File): Promise<EmployeeFormData[]> => {
         const dataLines = lines.slice(1)
         
         const employees: EmployeeFormData[] = dataLines.map(line => {
-          const [phone, name, department, gender] = line.split(',').map(s => s.trim())
+          const [phone, name, department, employee_id, email] = line.split(',').map(s => s.trim())
           return {
             phone,
             name,
             department,
-            gender: gender as 'Male' | 'Female' | 'Other' || 'Male',
+            employee_id,
+            email,
             is_active: true
           }
         })
@@ -105,6 +106,12 @@ const uploadFile = async () => {
         if (!emp.department) {
           throw new Error(`Row ${rowNum}: Department required`)
         }
+        if (!emp.employee_id || emp.employee_id.length < 2) {
+          throw new Error(`Row ${rowNum}: Employee ID required`)
+        }
+        if (!emp.email || !validateEmail(emp.email)) {
+          throw new Error(`Row ${rowNum}: Invalid email`)
+        }
         
         // Create employee
         await employeeStore.createEmployee(emp)
@@ -129,9 +136,9 @@ const uploadFile = async () => {
 }
 
 const downloadTemplate = () => {
-  const csv = `phone,name,department,gender
-1234567890,John Doe,Engineering,Male
-9876543210,Jane Smith,Marketing,Female`
+  const csv = `phone,name,department,employee_id,email
+1234567890,John Doe,Engineering,EMP001,john@example.com
+9876543210,Jane Smith,Marketing,EMP002,jane@example.com`
   
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)

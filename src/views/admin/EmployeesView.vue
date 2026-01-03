@@ -29,6 +29,8 @@ const filteredEmployees = computed(() => {
     result = result.filter(emp => 
       emp.name.toLowerCase().includes(query) ||
       emp.phone.includes(query) ||
+      emp.employee_id.toLowerCase().includes(query) ||
+      emp.email.toLowerCase().includes(query) ||
       emp.department.toLowerCase().includes(query)
     )
   }
@@ -161,8 +163,9 @@ const handleBulkUpload = async (count: number) => {
           <tr>
             <th>Name</th>
             <th>Phone</th>
+            <th>Employee ID</th>
+            <th>Email</th>
             <th>Department</th>
-            <th>Gender</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -171,10 +174,11 @@ const handleBulkUpload = async (count: number) => {
           <tr v-for="employee in filteredEmployees" :key="employee.phone">
             <td class="name-cell">{{ employee.name }}</td>
             <td class="phone-cell">{{ employee.phone }}</td>
+            <td>{{ employee.employee_id }}</td>
+            <td>{{ employee.email }}</td>
             <td>
               <span class="department-badge">{{ employee.department }}</span>
             </td>
-            <td>{{ employee.gender }}</td>
             <td>
               <span 
                 class="status-badge" 

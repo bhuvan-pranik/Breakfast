@@ -4,10 +4,11 @@
 
 export interface Employee {
   phone: string
-  name: string
-  department: string
-  gender: 'Male' | 'Female' | 'Other'
-  qr_code: string
+  name: string | null
+  department: string | null
+  employee_id: string | null
+  email: string | null
+  qr_code: string | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -15,21 +16,31 @@ export interface Employee {
 
 export interface CreateEmployeeInput {
   phone: string
-  name: string
-  department: string
-  gender: 'Male' | 'Female' | 'Other'
+  name?: string | null
+  department?: string | null
+  employee_id?: string | null
+  email?: string | null
+}
+
+export interface EmployeeFormData {
+  phone: string
+  name?: string | null
+  department?: string | null
+  employee_id?: string | null
+  email?: string | null
+  is_active: boolean
 }
 
 export interface UpdateEmployeeInput {
   name?: string
   department?: string
-  gender?: 'Male' | 'Female' | 'Other'
+  employee_id?: string
+  email?: string
 }
 
 export interface EmployeeFilters {
   search?: string
   department?: string
-  gender?: string
   isActive?: boolean
 }
 

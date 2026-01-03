@@ -17,16 +17,10 @@ export const GENDERS = ['Male', 'Female', 'Other'] as const
 
 // Department options
 export const DEPARTMENTS = [
-  'Engineering',
-  'Marketing',
-  'Sales',
-  'Human Resources',
-  'Finance',
-  'Operations',
-  'IT',
-  'Customer Support',
-  'Product',
-  'Design'
+  'Interns',
+  'Tech',
+  'operations',
+  'Others'
 ] as const
 
 // Role options
