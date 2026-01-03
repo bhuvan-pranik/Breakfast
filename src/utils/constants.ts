@@ -12,6 +12,23 @@ export const GENDER_OPTIONS = [
   { value: 'Other', label: 'Other' }
 ] as const
 
+// Gender values array
+export const GENDERS = ['Male', 'Female', 'Other'] as const
+
+// Department options
+export const DEPARTMENTS = [
+  'Engineering',
+  'Marketing',
+  'Sales',
+  'Human Resources',
+  'Finance',
+  'Operations',
+  'IT',
+  'Customer Support',
+  'Product',
+  'Design'
+] as const
+
 // Role options
 export const ROLE_OPTIONS = [
   { value: 'admin', label: 'Admin' },

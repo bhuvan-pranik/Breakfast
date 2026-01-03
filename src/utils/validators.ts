@@ -102,3 +102,11 @@ export const validators = {
     return true
   }
 }
+
+// Named exports for convenience
+export const validatePhone = validators.phone
+export const validateName = validators.name
+export const validateUsername = validators.username
+export const validatePassword = validators.password
+export const validateEmail = validators.email
+export const validateRequired = validators.required
