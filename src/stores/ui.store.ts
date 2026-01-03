@@ -95,7 +95,7 @@ export const useUIStore = defineStore('ui', () => {
    * Remove notification
    */
   function removeNotification(id: string): void {
-    const index = notifications.value.findIndex(n => n.id === id)
+    const index = notifications.value.findIndex((n: Notification) => n.id === id)
     if (index !== -1) {
       notifications.value.splice(index, 1)
     }

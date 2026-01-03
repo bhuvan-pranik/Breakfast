@@ -25,7 +25,7 @@ class AttendanceService {
     }
 
     // 2. Validate QR code
-    const isValid = qrcodeService.validateQRCode(qrCode, employee.phone, employee.name)
+    const isValid = qrcodeService.validateQRCode(qrCode, employee.phone, employee.name || '')
     
     if (!isValid) {
       return {
@@ -46,7 +46,7 @@ class AttendanceService {
 
     // 4. Check if already scanned today
     const today = new Date().toISOString().split('T')[0]
-    const { data: existingScans, error: checkError } = await supabase
+    const { data: existingScans } = await supabase
       .from('attendance_records')
       .select('*')
       .eq('employee_phone', employee.phone)
@@ -67,8 +67,8 @@ class AttendanceService {
       return {
         success: false,
         status: 'duplicate',
-        message: `${employee.name} already scanned today.`,
-        employeeName: employee.name
+        message: `${employee.name || 'Employee'} already scanned today.`,
+        employeeName: employee.name ?? undefined
       }
     }
 
@@ -92,8 +92,8 @@ class AttendanceService {
     return {
       success: true,
       status: 'success',
-      message: `Welcome, ${employee.name}!`,
-      employeeName: employee.name,
+      message: `Welcome, ${employee.name || 'Employee'}!`,
+      employeeName: employee.name ?? undefined,
       timestamp: record.scan_timestamp
     }
   }
@@ -119,7 +119,7 @@ class AttendanceService {
    * Get daily report
    */
   async getDailyReport(date?: string): Promise<DailyReport> {
-    const targetDate = date || new Date().toISOString().split('T')[0]
+    const targetDate = date || new Date().toISOString().split('T')[0] as string
 
     const { data: records, error } = await supabase
       .from('attendance_records')

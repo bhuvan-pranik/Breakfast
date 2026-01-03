@@ -60,7 +60,7 @@ const toggleStatus = async (scanner: ScannerAccount) => {
   }
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string | null) => {
   if (!dateString) return 'Never'
   return new Date(dateString).toLocaleString()
 }

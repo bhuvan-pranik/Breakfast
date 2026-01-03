@@ -79,7 +79,7 @@ class EmployeeService {
    */
   async create(input: CreateEmployeeInput): Promise<Employee> {
     // Generate QR code
-    const qrCode = qrcodeService.generateQRCode(input.phone, input.name)
+    const qrCode = qrcodeService.generateQRCode(input.phone, input.name ?? '')
 
     const { data, error } = await supabase
       .from('employees')
@@ -151,7 +151,7 @@ class EmployeeService {
     const employee = await this.getByPhone(phone)
     if (!employee) throw new Error('Employee not found')
 
-    const qrCode = qrcodeService.generateQRCode(phone, employee.name)
+    const qrCode = qrcodeService.generateQRCode(phone, employee.name ?? '')
 
     const { data, error } = await supabase
       .from('employees')
@@ -185,7 +185,7 @@ class EmployeeService {
   async bulkCreate(employees: CreateEmployeeInput[]): Promise<Employee[]> {
     const employeesWithQR = employees.map(emp => ({
       ...emp,
-      qr_code: qrcodeService.generateQRCode(emp.phone, emp.name),
+      qr_code: qrcodeService.generateQRCode(emp.phone, emp.name ?? ''),
       is_active: true
     }))
 

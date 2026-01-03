@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth.store'
 
 export function setupNavigationGuards(router: Router): void {
   // Before each route navigation
-  router.beforeEach(async (to, from, next) => {
+  router.beforeEach(async (to, _from, next) => {
     const authStore = useAuthStore()
 
     // Check if route requires authentication
@@ -64,7 +64,7 @@ export function setupNavigationGuards(router: Router): void {
   })
 
   // After each route navigation
-  router.afterEach((to, from) => {
+  router.afterEach(() => {
     // Scroll to top on route change
     window.scrollTo(0, 0)
   })

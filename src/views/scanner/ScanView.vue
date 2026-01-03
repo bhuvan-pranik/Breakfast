@@ -139,9 +139,9 @@ const onScanSuccess = async (decodedText: string) => {
   }
 }
 
-const onScanError = (errorMessage: string) => {
+const onScanError = (_errorMessage: string) => {
   // Suppress continuous scanning errors
-  // console.log('Scan error:', errorMessage)
+  // console.log('Scan error:', _errorMessage)
 }
 
 const toggleScanning = async () => {
