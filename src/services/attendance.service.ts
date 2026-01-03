@@ -46,15 +46,15 @@ class AttendanceService {
 
     // 4. Check if already scanned today
     const today = new Date().toISOString().split('T')[0]
-    const { data: existingScan } = await supabase
+    const { data: existingScans, error: checkError } = await supabase
       .from('attendance_records')
       .select('*')
       .eq('employee_phone', employee.phone)
       .eq('scan_date', today)
       .eq('status', 'success')
-      .single()
+      .limit(1)
 
-    if (existingScan) {
+    if (existingScans && existingScans.length > 0) {
       // Record duplicate scan attempt
       await supabase.from('attendance_records').insert({
         employee_phone: employee.phone,

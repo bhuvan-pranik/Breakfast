@@ -20,11 +20,14 @@ const SCAN_COOLDOWN = 3000 // 3 seconds between scans
 
 onMounted(async () => {
   try {
+    // Fetch today's records first
+    await attendanceStore.fetchTodayRecords()
+    
     html5QrCode = new Html5Qrcode('qr-reader')
     await startScanning()
   } catch (error) {
     console.error('Failed to initialize scanner:', error)
-    uiStore.showError('Failed to initialize camera')
+    uiStore.showError('Failed to initialize camera. Please check permissions.')
   }
 })
 
@@ -53,7 +56,22 @@ const startScanning = async () => {
     isCameraReady.value = true
   } catch (error) {
     console.error('Error starting scanner:', error)
-    uiStore.showError('Failed to start camera. Please grant camera permissions.')
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
+    // Provide more specific error messages
+    if (errorMessage.includes('Permission') || errorMessage.includes('NotAllowedError')) {
+      uiStore.showError('Camera permission denied. Please allow camera access in your browser settings.')
+    } else if (errorMessage.includes('NotFoundError') || errorMessage.includes('Device')) {
+      uiStore.showError('No camera found. Please ensure your device has a camera.')
+    } else if (errorMessage.includes('NotReadableError')) {
+      uiStore.showError('Camera is already in use by another application.')
+    } else if (errorMessage.includes('secure') || errorMessage.includes('HTTPS')) {
+      uiStore.showError('Camera access requires HTTPS connection.')
+    } else {
+      uiStore.showError(`Failed to start camera: ${errorMessage}`)
+    }
+    
+    isCameraReady.value = false
   }
 }
 
@@ -80,23 +98,29 @@ const onScanSuccess = async (decodedText: string) => {
   scannedData.value = decodedText
 
   try {
-    const result = await attendanceStore.recordAttendance(
+    // Check if scanner is logged in
+    if (!authStore.scannerId) {
+      uiStore.showError('Please login as a scanner first')
+      return
+    }
+
+    const result = await attendanceStore.recordScan(
       decodedText,
-      authStore.scannerId!
+      authStore.scannerId
     )
 
     scanResult.value = {
       success: result.status === 'success',
-      message: result.validation_message || 'Scan successful',
-      employee: result.employee
+      message: result.message,
+      employee: result.employeeName ? { name: result.employeeName } : undefined
     }
 
     if (result.status === 'success') {
-      uiStore.showSuccess(`✓ ${result.employee?.name || 'Employee'} marked present`)
+      uiStore.showSuccess(`✓ ${result.employeeName || 'Employee'} marked present`)
     } else if (result.status === 'duplicate') {
-      uiStore.showWarning(`Already scanned: ${result.employee?.name}`)
+      uiStore.showWarning(`Already scanned: ${result.employeeName}`)
     } else if (result.status === 'inactive') {
-      uiStore.showWarning(`Inactive employee: ${result.employee?.name}`)
+      uiStore.showWarning(`Inactive employee: ${result.employeeName}`)
     } else {
       uiStore.showError('Invalid QR code')
     }
@@ -107,6 +131,10 @@ const onScanSuccess = async (decodedText: string) => {
     }, 5000)
   } catch (error) {
     console.error('Scan error:', error)
+    scanResult.value = {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to record attendance'
+    }
     uiStore.showError('Failed to record attendance')
   }
 }
@@ -174,19 +202,19 @@ const toggleScanning = async () => {
         <h3>Today's Statistics</h3>
         <div class="stats-grid">
           <div class="stat-card">
-            <span class="stat-value">{{ attendanceStore.todayStats.total }}</span>
+            <span class="stat-value">{{ attendanceStore.totalScansToday }}</span>
             <span class="stat-label">Total Scans</span>
           </div>
           <div class="stat-card success">
-            <span class="stat-value">{{ attendanceStore.todayStats.successful }}</span>
+            <span class="stat-value">{{ attendanceStore.successfulScansToday }}</span>
             <span class="stat-label">Successful</span>
           </div>
           <div class="stat-card warning">
-            <span class="stat-value">{{ attendanceStore.todayStats.duplicates }}</span>
+            <span class="stat-value">{{ attendanceStore.duplicateScansToday }}</span>
             <span class="stat-label">Duplicates</span>
           </div>
           <div class="stat-card error">
-            <span class="stat-value">{{ attendanceStore.todayStats.invalid }}</span>
+            <span class="stat-value">{{ attendanceStore.todayRecords.filter(r => r.status === 'invalid' || r.status === 'inactive').length }}</span>
             <span class="stat-label">Invalid</span>
           </div>
         </div>

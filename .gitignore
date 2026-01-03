@@ -13,6 +13,7 @@ dist-ssr
 *.local
 public/
 *.lock
+*.ods
 
 # Editor directories and files
 .vscode
