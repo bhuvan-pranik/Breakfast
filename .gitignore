@@ -16,7 +16,7 @@ public/
 *.ods
 *~*
 *.csv
-
+*.env*
 # Editor directories and files
 .vscode
 .idea
