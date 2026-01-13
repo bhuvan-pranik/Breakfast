@@ -11,30 +11,17 @@ class AuthService {
   /**
    * Login with username/password
    * Process:
-   * 1. Query scanner_accounts table for username
-   * 2. Get associated user_id (email stored in auth.users)
-   * 3. Sign in with Supabase Auth using email
-   * 4. Update last_login_at timestamp
+   * 1. Sign in with Supabase Auth (authenticate first)
+   * 2. Query scanner_accounts table using authenticated user_id
+   * 3. Update last_login_at timestamp
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    // 1. Find scanner account by username
-    const { data: scannerAccount, error: accountError } = await supabase
-      .from('scanner_accounts')
-      .select('id, username, user_id, role, is_active, created_at, last_login_at')
-      .eq('username', credentials.username)
-      .eq('is_active', true)
-      .single()
-
-    if (accountError || !scannerAccount) {
-      throw new Error('Invalid username or account inactive')
-    }
-
-    // 2. Construct email using consistent pattern
+    // 1. Construct email using consistent pattern
     // Since admin API requires service_role key (not available in frontend),
     // we use a consistent email pattern: username@breakfast-system.local
     const email = `${credentials.username}@breakfast-system.local`
     
-    // 3. Sign in with Supabase Auth
+    // 2. Sign in with Supabase Auth (authenticated query)
     const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
       email: email,
       password: credentials.password
@@ -42,6 +29,21 @@ class AuthService {
 
     if (signInError) {
       throw new Error('Invalid credentials')
+    }
+
+    // 3. Get scanner account using authenticated user_id
+    const { data: scannerAccount, error: accountError } = await supabase
+      .from('scanner_accounts')
+      .select('id, username, user_id, role, is_active, created_at, last_login_at')
+      .eq('user_id', authData.user.id)
+      .eq('is_active', true)
+      .single()
+
+    if (accountError || !scannerAccount) {
+      // Scanner account doesn't exist or is inactive, but auth succeeded
+      // Log out and throw error
+      await supabase.auth.signOut()
+      throw new Error('Scanner account not found or inactive')
     }
 
     // 4. Update last_login_at
