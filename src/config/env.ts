@@ -4,10 +4,16 @@
 
 // Validated environment configuration
 export const env = {
-  // Supabase
+  // Supabase - Production
   supabase: {
     url: import.meta.env.VITE_SUPABASE_URL,
     anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY
+  },
+
+  // Supabase - Development
+  devSupabase: {
+    url: import.meta.env.VITE_DEV_SUPABASE_URL,
+    anonKey: import.meta.env.VITE_DEV_SUPABASE_ANON_KEY
   },
 
   // Application
@@ -21,6 +27,7 @@ export const env = {
 
   // Secrets
   qrSalt: import.meta.env.VITE_QR_SALT,
+  devQrSalt: import.meta.env.VITE_DEV_QR_SALT,
 
   // Feature Flags
   features: {
@@ -36,13 +43,42 @@ export const env = {
   }
 } as const
 
+/**
+ * Get active Supabase configuration based on environment
+ */
+export function getActiveSupabaseConfig() {
+  const isDevelopment = env.app.env === 'development'
+  return isDevelopment ? env.devSupabase : env.supabase
+}
+
+/**
+ * Get active QR salt based on environment
+ */
+export function getActiveQrSalt() {
+  const isDevelopment = env.app.env === 'development'
+  return isDevelopment ? env.devQrSalt : env.qrSalt
+}
+
 // Validation: Ensure critical env vars are present
 export function validateEnv(): void {
-  const required = [
+  const isDevelopment = env.app.env === 'development'
+  
+  // Base required variables
+  const baseRequired = [
     'VITE_SUPABASE_URL',
     'VITE_SUPABASE_ANON_KEY',
     'VITE_QR_SALT'
   ]
+
+  // Development-specific variables
+  const devRequired = [
+    'VITE_DEV_SUPABASE_URL',
+    'VITE_DEV_SUPABASE_ANON_KEY',
+    'VITE_DEV_QR_SALT'
+  ]
+
+  // Check required variables based on environment
+  const required = isDevelopment ? [...baseRequired, ...devRequired] : baseRequired
 
   const missing = required.filter(key => !import.meta.env[key])
 
@@ -54,7 +90,8 @@ export function validateEnv(): void {
   }
 
   // Validate QR salt length (minimum 32 characters for security)
-  if (env.qrSalt && env.qrSalt.length < 32) {
+  const activeQrSalt = getActiveQrSalt()
+  if (activeQrSalt && activeQrSalt.length < 32) {
     console.warn('WARNING: QR_SALT should be at least 32 characters for security')
   }
 }

@@ -5,13 +5,13 @@
 
 import { SHA256 } from 'crypto-js'
 import QRCode from 'qrcode'
-import { env } from '@/config/env'
+import { getActiveQrSalt } from '@/config/env'
 
 class QRCodeService {
   private readonly salt: string
 
   constructor() {
-    this.salt = env.qrSalt
+    this.salt = getActiveQrSalt()
 
     if (!this.salt) {
       throw new Error('QR_SALT environment variable is not defined')
