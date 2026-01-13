@@ -3,10 +3,11 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { env } from '@/config/env'
+import { getActiveSupabaseConfig } from '@/config/env'
 
-const supabaseUrl = env.supabase.url
-const supabaseAnonKey = env.supabase.anonKey
+const activeConfig = getActiveSupabaseConfig()
+const supabaseUrl = activeConfig.url
+const supabaseAnonKey = activeConfig.anonKey
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
