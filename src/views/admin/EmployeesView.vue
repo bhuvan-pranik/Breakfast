@@ -2,19 +2,48 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEmployeeStore } from '@/stores/employee.store'
-import { useUIStore } from '@/stores/ui.store'
 import { DEPARTMENTS } from '@/utils/constants'
 import type { Employee } from '@/types'
 import BulkUploadModal from '@/components/BulkUploadModal.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toast'
+import { Plus, Pencil, Trash2, Eye, Search, Download } from 'lucide-vue-next'
 
 const router = useRouter()
 const employeeStore = useEmployeeStore()
-const uiStore = useUIStore()
+const { toast } = useToast()
 
 const searchQuery = ref('')
 const selectedDepartment = ref('')
 const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
 const showBulkUpload = ref(false)
+const employeeToDelete = ref<Employee | null>(null)
+const showDeleteDialog = ref(false)
 
 onMounted(async () => {
   await employeeStore.fetchEmployees()
@@ -26,7 +55,7 @@ const filteredEmployees = computed(() => {
   // Search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    result = result.filter(emp => 
+    result = result.filter(emp =>
       (emp.name?.toLowerCase() || '').includes(query) ||
       emp.phone.includes(query) ||
       (emp.employee_id?.toLowerCase() || '').includes(query) ||
@@ -61,16 +90,28 @@ const editEmployee = (phone: string) => {
   router.push(`/admin/employees/${phone}/edit`)
 }
 
-const deleteEmployee = async (employee: Employee) => {
-  if (!confirm(`Are you sure you want to delete ${employee.name}?`)) {
-    return
-  }
+const confirmDeleteEmployee = (employee: Employee) => {
+  employeeToDelete.value = employee
+  showDeleteDialog.value = true
+}
+
+const deleteEmployee = async () => {
+  if (!employeeToDelete.value) return
 
   try {
-    await employeeStore.deleteEmployee(employee.phone)
-    uiStore.showSuccess('Employee deleted successfully')
+    await employeeStore.deleteEmployee(employeeToDelete.value.phone)
+    toast({
+      title: 'Success',
+      description: 'Employee deleted successfully',
+    })
+    showDeleteDialog.value = false
+    employeeToDelete.value = null
   } catch (error: any) {
-    uiStore.showError(error.message || 'Failed to delete employee')
+    toast({
+      title: 'Error',
+      description: error.message || 'Failed to delete employee',
+      variant: 'destructive',
+    })
   }
 }
 
@@ -78,33 +119,54 @@ const toggleStatus = async (employee: Employee) => {
   try {
     if (employee.is_active) {
       await employeeStore.deleteEmployee(employee.phone)
-      uiStore.showSuccess('Employee deactivated')
+      toast({
+        title: 'Success',
+        description: 'Employee deactivated',
+      })
     } else {
       await employeeStore.activateEmployee(employee.phone)
-      uiStore.showSuccess('Employee activated')
+      toast({
+        title: 'Success',
+        description: 'Employee activated',
+      })
     }
   } catch (error: any) {
-    uiStore.showError(error.message || 'Failed to update employee status')
+    toast({
+      title: 'Error',
+      description: error.message || 'Failed to update employee status',
+      variant: 'destructive',
+    })
   }
 }
 
 const downloadQR = async (employee: Employee) => {
   try {
     if (!employee.qr_code) {
-      uiStore.showError('Employee does not have a QR code')
+      toast({
+        title: 'Error',
+        description: 'Employee does not have a QR code',
+        variant: 'destructive',
+      })
       return
     }
     const { qrcodeService } = await import('@/services/qrcode.service')
     const dataUrl = await qrcodeService.generateQRCodeImage(employee.qr_code)
-    
+
     const link = document.createElement('a')
     link.download = `${employee.name || employee.phone}-QR.png`
     link.href = dataUrl
     link.click()
-    
-    uiStore.showSuccess('QR code downloaded')
+
+    toast({
+      title: 'Success',
+      description: 'QR code downloaded',
+    })
   } catch (error) {
-    uiStore.showError('Failed to download QR code')
+    toast({
+      title: 'Error',
+      description: 'Failed to download QR code',
+      variant: 'destructive',
+    })
   }
 }
 
@@ -115,138 +177,189 @@ const handleBulkUpload = async (_count: number) => {
 </script>
 
 <template>
-  <div class="employees-view">
-    <div class="header">
-      <h1>Employees</h1>
-      <div class="header-actions">
-        <button @click="showBulkUpload = true" class="btn-bulk">
-          📤 Bulk Upload
-        </button>
-        <button @click="createEmployee" class="btn-create">
-          + Add Employee
-        </button>
+  <div class="container mx-auto py-8 px-4">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <div>
+        <h1 class="text-3xl font-bold">Employees</h1>
+        <p class="text-muted-foreground mt-1">
+          Manage employee records and QR codes
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <Button @click="showBulkUpload = true" variant="outline">
+          <Download class="w-4 h-4 mr-2" />
+          Bulk Upload
+        </Button>
+        <Button @click="createEmployee">
+          <Plus class="w-4 h-4 mr-2" />
+          Add Employee
+        </Button>
       </div>
     </div>
 
     <!-- Filters -->
-    <div class="filters-card">
-      <div class="filters">
-        <div class="filter-group">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search by name, phone, or department..."
-            class="search-input"
-          />
+    <div class="bg-card rounded-lg border p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="space-y-2">
+          <label class="text-sm font-medium">Search</label>
+          <div class="relative">
+            <Search class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              v-model="searchQuery"
+              placeholder="Search by name, phone, or department..."
+              class="pl-9"
+            />
+          </div>
         </div>
 
-        <div class="filter-group">
-          <select v-model="selectedDepartment" class="filter-select">
-            <option value="">All Departments</option>
-            <option v-for="dept in DEPARTMENTS" :key="dept" :value="dept">
-              {{ dept }}
-            </option>
-          </select>
+        <div class="space-y-2">
+          <label class="text-sm font-medium">Department</label>
+          <Select v-model="selectedDepartment">
+            <SelectTrigger>
+              <SelectValue placeholder="All Departments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Departments</SelectItem>
+              <SelectItem v-for="dept in DEPARTMENTS" :key="dept" :value="dept">
+                {{ dept }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <div class="filter-group">
-          <select v-model="statusFilter" class="filter-select">
-            <option value="all">All Status</option>
-            <option value="active">Active Only</option>
-            <option value="inactive">Inactive Only</option>
-          </select>
+        <div class="space-y-2">
+          <label class="text-sm font-medium">Status</label>
+          <Select v-model="statusFilter">
+            <SelectTrigger>
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active Only</SelectItem>
+              <SelectItem value="inactive">Inactive Only</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div class="results-count">
-        {{ filteredEmployees.length }} employee{{ filteredEmployees.length !== 1 ? 's' : '' }}
+      <div class="text-sm text-muted-foreground">
+        {{ filteredEmployees.length }} employee{{ filteredEmployees.length !== 1 ? 's' : '' }} found
       </div>
     </div>
 
     <!-- Employees Table -->
-    <div class="table-container">
-      <table v-if="filteredEmployees.length > 0" class="employees-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Employee ID</th>
-            <th>Email</th>
-            <th>Department</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="employee in filteredEmployees" :key="employee.phone">
-            <td class="name-cell">{{ employee.name }}</td>
-            <td class="phone-cell">{{ employee.phone }}</td>
-            <td>{{ employee.employee_id }}</td>
-            <td>{{ employee.email }}</td>
-            <td>
-              <span class="department-badge">{{ employee.department }}</span>
-            </td>
-            <td>
-              <span 
-                class="status-badge" 
-                :class="{ 'active': employee.is_active, 'inactive': !employee.is_active }"
-              >
+    <div class="bg-card rounded-lg border overflow-hidden">
+      <Table v-if="filteredEmployees.length > 0">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Phone</TableHead>
+            <TableHead>Employee ID</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Department</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead class="w-[200px]">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="employee in filteredEmployees" :key="employee.phone">
+            <TableCell class="font-medium">{{ employee.name }}</TableCell>
+            <TableCell class="font-mono">{{ employee.phone }}</TableCell>
+            <TableCell>{{ employee.employee_id }}</TableCell>
+            <TableCell>{{ employee.email }}</TableCell>
+            <TableCell>
+              <Badge variant="secondary">{{ employee.department }}</Badge>
+            </TableCell>
+            <TableCell>
+              <Badge :variant="employee.is_active ? 'default' : 'secondary'">
                 {{ employee.is_active ? 'Active' : 'Inactive' }}
-              </span>
-            </td>
-            <td class="actions-cell">
-              <button 
-                @click="viewEmployee(employee.phone)" 
-                class="btn-action btn-view"
-                title="View Details"
-              >
-                👁️
-              </button>
-              <button 
-                @click="editEmployee(employee.phone)" 
-                class="btn-action btn-edit"
-                title="Edit"
-              >
-                ✏️
-              </button>
-              <button 
-                @click="downloadQR(employee)" 
-                class="btn-action btn-qr"
-                title="Download QR"
-              >
-                📱
-              </button>
-              <button 
-                @click="toggleStatus(employee)" 
-                class="btn-action btn-toggle"
-                :title="employee.is_active ? 'Deactivate' : 'Activate'"
-              >
-                {{ employee.is_active ? '🔴' : '🟢' }}
-              </button>
-              <button 
-                @click="deleteEmployee(employee)" 
-                class="btn-action btn-delete"
-                title="Delete"
-              >
-                🗑️
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </Badge>
+            </TableCell>
+            <TableCell>
+              <div class="flex items-center gap-1">
+                <Button
+                  @click="viewEmployee(employee.phone)"
+                  variant="ghost"
+                  size="sm"
+                  title="View Details"
+                >
+                  <Eye class="w-4 h-4" />
+                </Button>
+                <Button
+                  @click="editEmployee(employee.phone)"
+                  variant="ghost"
+                  size="sm"
+                  title="Edit"
+                >
+                  <Pencil class="w-4 h-4" />
+                </Button>
+                <Button
+                  @click="downloadQR(employee)"
+                  variant="ghost"
+                  size="sm"
+                  title="Download QR"
+                >
+                  <Download class="w-4 h-4" />
+                </Button>
+                <Button
+                  @click="toggleStatus(employee)"
+                  variant="ghost"
+                  size="sm"
+                  :title="employee.is_active ? 'Deactivate' : 'Activate'"
+                >
+                  <span :class="employee.is_active ? 'text-red-500' : 'text-green-500'">
+                    {{ employee.is_active ? '●' : '●' }}
+                  </span>
+                </Button>
+                <Button
+                  @click="confirmDeleteEmployee(employee)"
+                  variant="ghost"
+                  size="sm"
+                  title="Delete"
+                  class="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 class="w-4 h-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
 
-      <div v-else-if="employeeStore.isLoading" class="empty-state">
-        <div class="spinner"></div>
-        <p>Loading employees...</p>
+      <div v-else-if="employeeStore.isLoading" class="flex flex-col items-center justify-center py-12">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+        <p class="text-muted-foreground">Loading employees...</p>
       </div>
 
-      <div v-else class="empty-state">
-        <p>No employees found</p>
-        <button @click="createEmployee" class="btn-create-alt">
+      <div v-else class="flex flex-col items-center justify-center py-12">
+        <p class="text-muted-foreground mb-4">No employees found</p>
+        <Button @click="createEmployee">
+          <Plus class="w-4 h-4 mr-2" />
           Create First Employee
-        </button>
+        </Button>
       </div>
     </div>
+
+    <!-- Delete Confirmation Dialog -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Employee</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete {{ employeeToDelete?.name }}?
+            This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" @click="showDeleteDialog = false">
+            Cancel
+          </Button>
+          <Button variant="destructive" @click="deleteEmployee">
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <!-- Bulk Upload Modal -->
     <BulkUploadModal
@@ -257,289 +370,3 @@ const handleBulkUpload = async (_count: number) => {
   </div>
 </template>
 
-<style scoped>
-.employees-view {
-  padding: 2rem;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.header h1 {
-  font-size: 1.75rem;
-  color: #333;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.btn-bulk {
-  padding: 0.75rem 1.5rem;
-  background: #ff9800;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.btn-bulk:hover {
-  background: #f57c00;
-}
-
-.btn-create {
-  padding: 0.75rem 1.5rem;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.btn-create:hover {
-  background: #5568d3;
-}
-
-.filters-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-}
-
-.filters {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.search-input,
-.filter-select {
-  padding: 0.75rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.3s;
-}
-
-.search-input:focus,
-.filter-select:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.results-count {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.table-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.employees-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.employees-table thead {
-  background: #f5f5f5;
-}
-
-.employees-table th {
-  padding: 1rem;
-  text-align: left;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.employees-table tbody tr {
-  border-bottom: 1px solid #f0f0f0;
-  transition: background 0.2s;
-}
-
-.employees-table tbody tr:hover {
-  background: #f9f9f9;
-}
-
-.employees-table td {
-  padding: 1rem;
-  color: #666;
-}
-
-.name-cell {
-  font-weight: 500;
-  color: #333;
-}
-
-.phone-cell {
-  font-family: monospace;
-  font-size: 0.95rem;
-}
-
-.department-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background: #e3f2fd;
-  color: #1976d2;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.status-badge.active {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.status-badge.inactive {
-  background: #ffebee;
-  color: #c62828;
-}
-
-.actions-cell {
-  white-space: nowrap;
-}
-
-.btn-action {
-  padding: 0.4rem 0.6rem;
-  margin-right: 0.25rem;
-  border: none;
-  background: #f5f5f5;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1.1rem;
-  transition: all 0.2s;
-}
-
-.btn-action:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.btn-view:hover {
-  background: #e3f2fd;
-}
-
-.btn-edit:hover {
-  background: #fff3e0;
-}
-
-.btn-qr:hover {
-  background: #f3e5f5;
-}
-
-.btn-toggle:hover {
-  background: #e0f2f1;
-}
-
-.btn-delete:hover {
-  background: #ffebee;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #999;
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #e0e0e0;
-  border-top-color: #667eea;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.btn-create-alt {
-  margin-top: 1rem;
-  padding: 0.75rem 1.5rem;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-create-alt:hover {
-  background: #5568d3;
-}
-
-@media (max-width: 1024px) {
-  .filters {
-    grid-template-columns: 1fr;
-  }
-
-  .employees-table {
-    font-size: 0.9rem;
-  }
-
-  .employees-table th,
-  .employees-table td {
-    padding: 0.75rem;
-  }
-}
-
-@media (max-width: 768px) {
-  .employees-view {
-    padding: 1rem;
-  }
-
-  .header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-
-  .btn-create {
-    width: 100%;
-  }
-
-  /* Make table scrollable on mobile */
-  .table-container {
-    overflow-x: auto;
-  }
-
-  .employees-table {
-    min-width: 800px;
-  }
-}
-</style>
