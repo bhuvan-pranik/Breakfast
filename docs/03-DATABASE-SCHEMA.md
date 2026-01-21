@@ -27,7 +27,9 @@ This document defines the complete database schema for the QR-based breakfast co
 │ id (PK, UUID)           │──┤
 │ username (UNIQUE)       │  │
 │ user_id (FK → auth)     │  │
-│ role                    │  │
+│ name                    │  │
+│ location                │  │
+│ description             │  │
 │ is_active               │  │
 │ created_at              │  │
 │ last_login_at           │  │
@@ -143,7 +145,9 @@ CREATE TRIGGER update_employees_updated_at
 | `id` | UUID | PRIMARY KEY, DEFAULT uuid_generate_v4() | Unique scanner account ID |
 | `username` | VARCHAR(50) | NOT NULL, UNIQUE | Scanner username for display |
 | `user_id` | UUID | NOT NULL, UNIQUE, FOREIGN KEY → auth.users(id) | Supabase auth user ID |
-| `role` | VARCHAR(20) | NOT NULL, CHECK (role IN ('admin', 'scanner')) | User role |
+| `name` | VARCHAR(255) | NOT NULL | Scanner display name |
+| `location` | VARCHAR(255) | NOT NULL | Scanner location/placement |
+| `description` | TEXT | NULL | Scanner description/notes |
 | `is_active` | BOOLEAN | NOT NULL, DEFAULT true | Account active status |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | Account creation timestamp |
 | `last_login_at` | TIMESTAMPTZ | NULL | Last successful login timestamp |
@@ -159,8 +163,14 @@ CREATE UNIQUE INDEX idx_scanner_accounts_username ON scanner_accounts(username);
 -- Foreign key to auth.users
 CREATE UNIQUE INDEX idx_scanner_accounts_user_id ON scanner_accounts(user_id);
 
--- Filter by role and active status
-CREATE INDEX idx_scanner_accounts_role_active ON scanner_accounts(role, is_active);
+-- Search by name (case-insensitive)
+CREATE INDEX idx_scanner_accounts_name ON scanner_accounts(LOWER(name));
+
+-- Filter by location
+CREATE INDEX idx_scanner_accounts_location ON scanner_accounts(location);
+
+-- Filter by active status
+CREATE INDEX idx_scanner_accounts_is_active ON scanner_accounts(is_active);
 ```
 
 **SQL Definition**:
@@ -169,7 +179,9 @@ CREATE TABLE scanner_accounts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   username VARCHAR(50) NOT NULL UNIQUE,
   user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
-  role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'scanner')),
+  name VARCHAR(255) NOT NULL,
+  location VARCHAR(255) NOT NULL,
+  description TEXT NULL,
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_login_at TIMESTAMPTZ NULL

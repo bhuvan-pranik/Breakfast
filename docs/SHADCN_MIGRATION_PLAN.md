@@ -1149,20 +1149,28 @@ Convert to use `Dialog` component:
 
 ---
 
-### Phase 8: View Migration - Reports
+### Phase 8: Update Layouts and Common Components ✅ COMPLETED
 
-**Objective**: Migrate reports view
+**Objective**: Convert remaining layouts and common components from plain CSS to shadcn-vue components
 
-**Tasks**:
-1. Design reports layout with Tabs
-2. Implement date range filters
-3. Add export functionality
-4. Create report tables
+**Tasks Completed**:
+1. ✅ Reviewed and updated ScannerLayout.vue - Already using shadcn-vue components
+2. ✅ Reviewed and updated AuthLayout.vue - Already using shadcn-vue components
+3. ✅ Reviewed and updated AdminLayout.vue - Already using shadcn-vue components
+4. ✅ Converted BulkUploadModal.vue to use Dialog, Form, Button, Input, Select, Alert, and Skeleton components
+5. ✅ Updated App.vue with Toaster component for global toast notifications
+6. ✅ Updated main.ts to ensure Toaster is properly registered
+7. ✅ Verified all layouts use shadcn-vue components consistently
+8. ✅ Removed all scoped CSS from converted components
+9. ✅ Ensured responsive design across all layouts
 
 **Deliverables**:
-- Reports view migrated
-- Filtering working
-- Export functionality (if implemented)
+- ✅ All layouts using shadcn-vue components
+- ✅ BulkUploadModal fully converted to shadcn-vue
+- ✅ App.vue updated with Toaster
+- ✅ main.ts properly configured
+- ✅ No remaining plain CSS in layouts
+- ✅ Responsive design maintained
 
 ---
 
