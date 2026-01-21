@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth.store'
 import { useRouter } from 'vue-router'
+import { Button } from '@/components/ui/button'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -12,72 +13,21 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <div class="scanner-layout">
-    <header class="header">
-      <div class="container">
-        <h1>QR Code Scanner</h1>
-        <div class="user-info">
+  <div class="min-h-screen bg-neutral-900 text-white">
+    <header class="bg-neutral-800 shadow-md">
+      <div class="max-w-7xl mx-auto px-5 flex justify-between items-center py-4">
+        <h1 class="text-2xl font-semibold">QR Code Scanner</h1>
+        <div class="flex items-center gap-4">
           <span>{{ authStore.username }}</span>
-          <button @click="handleLogout" class="btn-logout">Logout</button>
+          <Button @click="handleLogout" variant="destructive" size="sm">
+            Logout
+          </Button>
         </div>
       </div>
     </header>
 
-    <main class="main">
+    <main class="py-8">
       <RouterView />
     </main>
   </div>
 </template>
-
-<style scoped>
-.scanner-layout {
-  min-height: 100vh;
-  background: #1a1a1a;
-  color: white;
-}
-
-.header {
-  background: #2a2a2a;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-.header .container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 20px;
-}
-
-.header h1 {
-  font-size: 1.5rem;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.btn-logout {
-  padding: 0.5rem 1rem;
-  background: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.btn-logout:hover {
-  background: #c82333;
-}
-
-.main {
-  padding: 2rem 0;
-}
-</style>
