@@ -4,6 +4,11 @@ import { useEmployeeStore } from '@/stores/employee.store'
 import { useUIStore } from '@/stores/ui.store'
 import { validatePhone, validateEmail } from '@/utils/validators'
 import type { EmployeeFormData, CreateEmployeeInput } from '@/types'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Upload, FileText, Download, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-vue-next'
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -194,374 +199,131 @@ const close = () => {
 </script>
 
 <template>
-  <div class="bulk-upload-modal">
-    <div class="modal-overlay" @click="close"></div>
-    
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Bulk Upload Employees</h2>
-        <button @click="close" class="btn-close">×</button>
-      </div>
+  <Dialog :open="true" @update:open="close">
+    <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Bulk Upload Employees</DialogTitle>
+        <DialogDescription>
+          Upload multiple employees at once using a CSV file
+        </DialogDescription>
+      </DialogHeader>
 
-      <div v-if="!showResults" class="modal-body">
-        <div class="instructions">
-          <h3>Instructions:</h3>
-          <ol>
-            <li>Download the CSV template</li>
-            <li>Fill in employee details (phone, name, department, gender)</li>
-            <li>Upload the completed file</li>
-          </ol>
-        </div>
+      <div v-if="!showResults" class="space-y-6">
+        <!-- Instructions -->
+        <Card>
+          <CardHeader>
+            <CardTitle class="text-lg">Instructions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ol class="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+              <li>Download the CSV template</li>
+              <li>Fill in employee details (phone, name, department, employee_id, email)</li>
+              <li>Upload the completed file</li>
+            </ol>
+          </CardContent>
+        </Card>
 
-        <button @click="downloadTemplate" class="btn btn-secondary">
-          📥 Download Template
-        </button>
+        <!-- Download Template Button -->
+        <Button @click="downloadTemplate" variant="outline" class="w-full">
+          <Download class="mr-2 h-4 w-4" />
+          Download Template
+        </Button>
 
-        <div class="file-upload-area">
+        <!-- File Upload Area -->
+        <div
+          class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 transition-colors hover:border-primary/50 cursor-pointer"
+          @click="selectFile"
+        >
           <input
             ref="fileInput"
             type="file"
             accept=".csv"
             @change="handleFileSelect"
-            style="display: none"
+            class="hidden"
           />
           
-          <div v-if="!selectedFile" @click="selectFile" class="upload-placeholder">
-            <div class="upload-icon">📄</div>
-            <p>Click to select CSV file</p>
-            <p class="file-note">or drag and drop</p>
+          <div v-if="!selectedFile" class="text-center">
+            <FileText class="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <p class="text-sm font-medium">Click to select CSV file</p>
+            <p class="text-xs text-muted-foreground mt-1">or drag and drop</p>
           </div>
 
-          <div v-else class="selected-file">
-            <div class="file-info">
-              <span class="file-name">{{ selectedFile.name }}</span>
-              <span class="file-size">{{ (selectedFile.size / 1024).toFixed(2) }} KB</span>
+          <div v-else class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <FileText class="h-8 w-8 text-primary" />
+              <div>
+                <p class="text-sm font-medium">{{ selectedFile.name }}</p>
+                <p class="text-xs text-muted-foreground">{{ (selectedFile.size / 1024).toFixed(2) }} KB</p>
+              </div>
             </div>
-            <button @click="selectFile" class="btn-change">Change File</button>
+            <Button variant="ghost" size="sm" @click.stop="selectFile">
+              Change
+            </Button>
           </div>
         </div>
 
-        <div class="modal-actions">
-          <button @click="close" class="btn btn-secondary">Cancel</button>
-          <button 
+        <!-- Actions -->
+        <DialogFooter>
+          <Button variant="outline" @click="close">Cancel</Button>
+          <Button 
             @click="uploadFile" 
-            class="btn btn-primary"
             :disabled="!selectedFile || isUploading"
           >
+            <Upload v-if="!isUploading" class="mr-2 h-4 w-4" />
             {{ isUploading ? 'Uploading...' : 'Upload Employees' }}
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </div>
 
-      <div v-else class="modal-body results">
-        <div class="results-summary">
-          <h3>Upload Results</h3>
-          <div class="stats">
-            <div class="stat success">
-              <span class="stat-value">{{ uploadResults.successful }}</span>
-              <span class="stat-label">Successful</span>
-            </div>
-            <div class="stat warning">
-              <span class="stat-value">{{ uploadResults.skipped }}</span>
-              <span class="stat-label">Skipped (Duplicates)</span>
-            </div>
-            <div class="stat error">
-              <span class="stat-value">{{ uploadResults.failed }}</span>
-              <span class="stat-label">Failed</span>
-            </div>
+      <!-- Results -->
+      <div v-else class="space-y-6">
+        <div class="text-center">
+          <h3 class="text-xl font-semibold mb-6">Upload Results</h3>
+          
+          <div class="grid grid-cols-3 gap-4 mb-6">
+            <Card class="border-l-4 border-l-green-500">
+              <CardContent class="pt-6 text-center">
+                <CheckCircle class="mx-auto h-8 w-8 text-green-500 mb-2" />
+                <p class="text-3xl font-bold">{{ uploadResults.successful }}</p>
+                <p class="text-sm text-muted-foreground">Successful</p>
+              </CardContent>
+            </Card>
+            
+            <Card class="border-l-4 border-l-orange-500">
+              <CardContent class="pt-6 text-center">
+                <AlertTriangle class="mx-auto h-8 w-8 text-orange-500 mb-2" />
+                <p class="text-3xl font-bold">{{ uploadResults.skipped }}</p>
+                <p class="text-sm text-muted-foreground">Skipped</p>
+              </CardContent>
+            </Card>
+            
+            <Card class="border-l-4 border-l-red-500">
+              <CardContent class="pt-6 text-center">
+                <AlertCircle class="mx-auto h-8 w-8 text-red-500 mb-2" />
+                <p class="text-3xl font-bold">{{ uploadResults.failed }}</p>
+                <p class="text-sm text-muted-foreground">Failed</p>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        <div v-if="uploadResults.errors.length > 0" class="errors-list">
-          <h4>Errors:</h4>
-          <ul>
-            <li v-for="(error, index) in uploadResults.errors" :key="index">
-              {{ error }}
-            </li>
-          </ul>
-        </div>
+        <!-- Errors List -->
+        <Alert v-if="uploadResults.errors.length > 0" variant="destructive">
+          <AlertCircle class="h-4 w-4" />
+          <AlertTitle>Errors</AlertTitle>
+          <AlertDescription>
+            <ul class="list-disc list-inside mt-2 max-h-48 overflow-y-auto space-y-1">
+              <li v-for="(error, index) in uploadResults.errors" :key="index">
+                {{ error }}
+              </li>
+            </ul>
+          </AlertDescription>
+        </Alert>
 
-        <button @click="close" class="btn btn-primary">Close</button>
+        <DialogFooter>
+          <Button @click="close">Close</Button>
+        </DialogFooter>
       </div>
-    </div>
-  </div>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped>
-.bulk-upload-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-}
-
-.modal-content {
-  position: relative;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #333;
-}
-
-.btn-close {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: #f5f5f5;
-  border-radius: 50%;
-  font-size: 1.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.3s;
-}
-
-.btn-close:hover {
-  background: #e0e0e0;
-}
-
-.modal-body {
-  padding: 2rem;
-}
-
-.instructions {
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: #f5f5f5;
-  border-radius: 8px;
-}
-
-.instructions h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.1rem;
-  color: #333;
-}
-
-.instructions ol {
-  margin: 0;
-  padding-left: 1.5rem;
-  color: #666;
-}
-
-.instructions li {
-  margin-bottom: 0.5rem;
-}
-
-.file-upload-area {
-  margin: 2rem 0;
-  border: 2px dashed #e0e0e0;
-  border-radius: 8px;
-  padding: 2rem;
-  transition: border-color 0.3s;
-}
-
-.file-upload-area:hover {
-  border-color: #667eea;
-}
-
-.upload-placeholder {
-  text-align: center;
-  cursor: pointer;
-}
-
-.upload-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.upload-placeholder p {
-  margin: 0.5rem 0;
-  color: #666;
-}
-
-.file-note {
-  font-size: 0.875rem;
-  color: #999;
-}
-
-.selected-file {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.file-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.file-name {
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 0.25rem;
-}
-
-.file-size {
-  font-size: 0.875rem;
-  color: #999;
-}
-
-.btn-change {
-  padding: 0.5rem 1rem;
-  background: #f5f5f5;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.btn-change:hover {
-  background: #e0e0e0;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.btn {
-  flex: 1;
-  padding: 0.875rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-secondary {
-  background: #e0e0e0;
-  color: #666;
-  width: 100%;
-  margin-bottom: 1.5rem;
-}
-
-.btn-secondary:hover {
-  background: #d0d0d0;
-}
-
-.btn-primary {
-  background: #667eea;
-  color: white;
-  width: 100%;
-}
-
-.btn-primary:hover {
-  background: #5568d3;
-}
-
-.btn-primary:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-.results-summary {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.results-summary h3 {
-  margin: 0 0 1.5rem 0;
-  color: #333;
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 1rem;
-}
-
-.stat {
-  padding: 1.5rem;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.stat.success {
-  background: #e8f5e9;
-  border-left: 4px solid #4caf50;
-}
-
-.stat.warning {
-  background: #fff3e0;
-  border-left: 4px solid #ff9800;
-}
-
-.stat.error {
-  background: #ffebee;
-  border-left: 4px solid #f44336;
-}
-
-.stat-value {
-  display: block;
-  font-size: 2rem;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 0.25rem;
-}
-
-.stat-label {
-  display: block;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.errors-list {
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: #fff3e0;
-  border-radius: 8px;
-  border-left: 4px solid #ff9800;
-}
-
-.errors-list h4 {
-  margin: 0 0 1rem 0;
-  color: #e65100;
-}
-
-.errors-list ul {
-  margin: 0;
-  padding-left: 1.5rem;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.errors-list li {
-  margin-bottom: 0.5rem;
-  color: #f57c00;
-}
-</style>
