@@ -6,11 +6,21 @@ import { CalendarRoot, useForwardPropsEmits } from "reka-ui"
 import { cn } from "@/lib/utils"
 import { CalendarCell, CalendarCellTrigger, CalendarGrid, CalendarGridBody, CalendarGridHead, CalendarGridRow, CalendarHeadCell, CalendarHeader, CalendarHeading, CalendarNextButton, CalendarPrevButton } from "."
 
-const props = defineProps<CalendarRootProps & { class?: HTMLAttributes["class"] }>()
+// Add support for v-model
+interface Props extends CalendarRootProps {
+  modelValue?: any
+  class?: HTMLAttributes["class"]
+}
 
-const emits = defineEmits<CalendarRootEmits>()
+interface Emits extends CalendarRootEmits {
+  "update:modelValue": [value: any]
+}
 
-const delegatedProps = reactiveOmit(props, "class")
+const props = defineProps<Props>()
+
+const emits = defineEmits<Emits>()
+
+const delegatedProps = reactiveOmit(props, "class", "modelValue")
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
 </script>

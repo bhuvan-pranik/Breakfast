@@ -501,7 +501,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { Calendar, Download, FileText, BarChart, TrendingUp, Users, ScanLine, RefreshCw, ArrowUpDown } from 'lucide-vue-next'
+import { Download, FileText, BarChart, TrendingUp, Users, ScanLine, RefreshCw, ArrowUpDown } from 'lucide-vue-next'
+import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -604,6 +605,11 @@ const sortedRecords = computed(() => {
   return [...records.value].sort((a, b) => {
     const aVal = a[sortColumn.value]
     const bVal = b[sortColumn.value]
+    
+    // Handle cases where values might be null or undefined
+    if (aVal == null && bVal == null) return 0
+    if (aVal == null) return sortDirection.value === 'asc' ? -1 : 1
+    if (bVal == null) return sortDirection.value === 'asc' ? 1 : -1
     
     if (aVal < bVal) return sortDirection.value === 'asc' ? -1 : 1
     if (aVal > bVal) return sortDirection.value === 'asc' ? 1 : -1

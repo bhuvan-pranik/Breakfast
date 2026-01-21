@@ -14,7 +14,6 @@ import type { ScannerAccount } from '@/types'
 
 const router = useRouter()
 const scannerStore = useScannerStore()
-const uiStore = useUIStore()
 const { toast } = useToast()
 
 const searchQuery = ref('')

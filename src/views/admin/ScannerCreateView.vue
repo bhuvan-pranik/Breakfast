@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft } from 'lucide-vue-next'
 import { object, string, boolean, enum as zenum } from 'zod'
@@ -86,7 +86,7 @@ const cancel = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form @submit="onSubmit" class="space-y-6">
+        <form @submit="onSubmit" class="space-y-6">
           <FormField v-slot="{ componentField }" name="username">
             <FormItem>
               <FormLabel>Username *</FormLabel>
@@ -183,7 +183,7 @@ const cancel = () => {
               {{ isSubmitting ? 'Creating...' : 'Create Scanner' }}
             </Button>
           </div>
-        </Form>
+        </form>
       </CardContent>
     </Card>
   </div>
