@@ -68,7 +68,7 @@ class ScannerService {
   async create(input: CreateScannerInput): Promise<ScannerAccount> {
     // Create user in Supabase Auth with auto-confirm
     const email = `${input.username}@breakfast-system.local`
-    
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password: input.password,
@@ -76,7 +76,7 @@ class ScannerService {
         emailRedirectTo: undefined,
         data: {
           username: input.username,
-          role: input.role
+          role: 'scanner'
         }
       }
     })
@@ -96,7 +96,7 @@ class ScannerService {
         user_id: authData.user.id,
         username: input.username,
         role: input.role,
-        is_active: true
+        is_active: input.is_active
       })
       .select()
       .single()

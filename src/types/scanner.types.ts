@@ -16,6 +16,7 @@ export interface CreateScannerInput {
   username: string
   password: string
   role: 'admin' | 'scanner'
+  is_active: boolean
 }
 
 export interface UpdateScannerInput {

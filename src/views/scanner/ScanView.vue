@@ -4,6 +4,10 @@ import { Html5Qrcode } from 'html5-qrcode'
 import { useAttendanceStore } from '@/stores/attendance.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore } from '@/stores/ui.store'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Camera, CameraOff, CheckCircle, XCircle, RefreshCw } from 'lucide-vue-next'
 
 const attendanceStore = useAttendanceStore()
 const authStore = useAuthStore()
@@ -154,316 +158,109 @@ const toggleScanning = async () => {
 </script>
 
 <template>
-  <div class="scan-view">
-    <div class="scan-header">
-      <h1>QR Code Scanner</h1>
-      <p class="scan-subtitle">Scan employee QR codes to mark attendance</p>
+  <div class="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-700 p-4 md:p-8">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">QR Code Scanner</h1>
+      <p class="text-white/90 text-base md:text-lg">Scan employee QR codes to mark attendance</p>
     </div>
 
-    <div class="scan-container">
-      <!-- Camera Preview -->
-      <div class="camera-wrapper">
-        <div id="qr-reader" class="qr-reader"></div>
-        
-        <div v-if="!isCameraReady" class="camera-placeholder">
-          <div class="spinner"></div>
-          <p>Initializing camera...</p>
-        </div>
-      </div>
+    <div class="max-w-2xl mx-auto space-y-6">
+      <!-- Camera Card -->
+      <Card class="overflow-hidden shadow-2xl">
+        <CardContent class="p-0">
+          <div class="relative">
+            <div id="qr-reader" class="w-full"></div>
+            
+            <!-- Camera Placeholder -->
+            <div v-if="!isCameraReady" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-100">
+              <RefreshCw class="w-12 h-12 text-indigo-500 animate-spin mb-4" />
+              <p class="text-gray-600">Initializing camera...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <!-- Scan Controls -->
-      <div class="scan-controls">
-        <button 
-          @click="toggleScanning" 
-          class="btn-toggle"
-          :class="{ 'btn-stop': isScanning, 'btn-start': !isScanning }"
+      <div class="flex justify-center">
+        <Button
+          @click="toggleScanning"
+          :variant="isScanning ? 'destructive' : 'default'"
+          size="lg"
+          class="min-w-[200px] shadow-lg hover:shadow-xl transition-all"
         >
+          <Camera v-if="!isScanning" class="w-5 h-5 mr-2" />
+          <CameraOff v-else class="w-5 h-5 mr-2" />
           {{ isScanning ? 'Stop Scanning' : 'Start Scanning' }}
-        </button>
+        </Button>
       </div>
 
-      <!-- Scan Result Display -->
-      <transition name="fade">
-        <div v-if="scanResult" class="scan-result" :class="{ 'success': scanResult.success, 'error': !scanResult.success }">
-          <div class="result-icon">
-            <span v-if="scanResult.success">✓</span>
-            <span v-else>✗</span>
-          </div>
-          <div class="result-content">
-            <h3 v-if="scanResult.employee">{{ scanResult.employee.name }}</h3>
-            <p class="department" v-if="scanResult.employee">{{ scanResult.employee.department }}</p>
-            <p class="message">{{ scanResult.message }}</p>
-          </div>
-        </div>
+      <!-- Scan Result Alert -->
+      <transition
+        enter-active-class="transition-all duration-300 ease-out"
+        enter-from-class="opacity-0 translate-y-4"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition-all duration-300 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-4"
+      >
+        <Alert
+          v-if="scanResult"
+          :variant="scanResult.success ? 'default' : 'destructive'"
+          class="shadow-lg"
+        >
+          <CheckCircle v-if="scanResult.success" class="w-6 h-6" />
+          <XCircle v-else class="w-6 h-6" />
+          <AlertDescription class="ml-2">
+            <div v-if="scanResult.employee" class="font-semibold text-lg">
+              {{ scanResult.employee.name }}
+            </div>
+            <div class="text-sm opacity-90">{{ scanResult.message }}</div>
+          </AlertDescription>
+        </Alert>
       </transition>
 
-      <!-- Today's Statistics -->
-      <div class="scan-stats">
-        <h3>Today's Statistics</h3>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <span class="stat-value">{{ attendanceStore.totalScansToday }}</span>
-            <span class="stat-label">Total Scans</span>
+      <!-- Today's Statistics Card -->
+      <Card class="shadow-xl">
+        <CardHeader>
+          <CardTitle class="text-center">Today's Statistics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Total Scans -->
+            <div class="bg-gray-50 rounded-lg p-4 text-center border-l-4 border-indigo-500">
+              <div class="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+                {{ attendanceStore.totalScansToday }}
+              </div>
+              <div class="text-xs md:text-sm text-gray-600 uppercase tracking-wide">Total Scans</div>
+            </div>
+
+            <!-- Successful Scans -->
+            <div class="bg-green-50 rounded-lg p-4 text-center border-l-4 border-green-500">
+              <div class="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+                {{ attendanceStore.successfulScansToday }}
+              </div>
+              <div class="text-xs md:text-sm text-gray-600 uppercase tracking-wide">Successful</div>
+            </div>
+
+            <!-- Duplicate Scans -->
+            <div class="bg-orange-50 rounded-lg p-4 text-center border-l-4 border-orange-500">
+              <div class="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+                {{ attendanceStore.duplicateScansToday }}
+              </div>
+              <div class="text-xs md:text-sm text-gray-600 uppercase tracking-wide">Duplicates</div>
+            </div>
+
+            <!-- Invalid Scans -->
+            <div class="bg-red-50 rounded-lg p-4 text-center border-l-4 border-red-500">
+              <div class="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+                {{ attendanceStore.todayRecords.filter(r => r.status === 'invalid' || r.status === 'inactive').length }}
+              </div>
+              <div class="text-xs md:text-sm text-gray-600 uppercase tracking-wide">Invalid</div>
+            </div>
           </div>
-          <div class="stat-card success">
-            <span class="stat-value">{{ attendanceStore.successfulScansToday }}</span>
-            <span class="stat-label">Successful</span>
-          </div>
-          <div class="stat-card warning">
-            <span class="stat-value">{{ attendanceStore.duplicateScansToday }}</span>
-            <span class="stat-label">Duplicates</span>
-          </div>
-          <div class="stat-card error">
-            <span class="stat-value">{{ attendanceStore.todayRecords.filter(r => r.status === 'invalid' || r.status === 'inactive').length }}</span>
-            <span class="stat-label">Invalid</span>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>
-
-<style scoped>
-.scan-view {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 2rem 1rem;
-}
-
-.scan-header {
-  text-align: center;
-  color: white;
-  margin-bottom: 2rem;
-}
-
-.scan-header h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.scan-subtitle {
-  font-size: 1rem;
-  opacity: 0.9;
-}
-
-.scan-container {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.camera-wrapper {
-  position: relative;
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  margin-bottom: 1.5rem;
-}
-
-.qr-reader {
-  width: 100%;
-}
-
-.camera-placeholder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #f5f5f5;
-  color: #666;
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #e0e0e0;
-  border-top-color: #667eea;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.scan-controls {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.btn-toggle {
-  padding: 1rem 3rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn-start {
-  background: #4caf50;
-  color: white;
-}
-
-.btn-start:hover {
-  background: #45a049;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
-}
-
-.btn-stop {
-  background: #f44336;
-  color: white;
-}
-
-.btn-stop:hover {
-  background: #da190b;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(244, 67, 54, 0.3);
-}
-
-.scan-result {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.scan-result.success {
-  border-left: 5px solid #4caf50;
-}
-
-.scan-result.error {
-  border-left: 5px solid #f44336;
-}
-
-.result-icon {
-  font-size: 3rem;
-  font-weight: bold;
-  flex-shrink: 0;
-}
-
-.scan-result.success .result-icon {
-  color: #4caf50;
-}
-
-.scan-result.error .result-icon {
-  color: #f44336;
-}
-
-.result-content {
-  flex: 1;
-}
-
-.result-content h3 {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.5rem;
-  color: #333;
-}
-
-.department {
-  color: #666;
-  margin: 0 0 0.5rem 0;
-  font-size: 0.9rem;
-}
-
-.message {
-  margin: 0;
-  color: #888;
-  font-size: 0.95rem;
-}
-
-.scan-stats {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-}
-
-.scan-stats h3 {
-  margin: 0 0 1rem 0;
-  color: #333;
-  text-align: center;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-}
-
-.stat-card {
-  background: #f5f5f5;
-  padding: 1.5rem 1rem;
-  border-radius: 8px;
-  text-align: center;
-  border-left: 4px solid #667eea;
-}
-
-.stat-card.success {
-  border-left-color: #4caf50;
-}
-
-.stat-card.warning {
-  border-left-color: #ff9800;
-}
-
-.stat-card.error {
-  border-left-color: #f44336;
-}
-
-.stat-value {
-  display: block;
-  font-size: 2rem;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 0.25rem;
-}
-
-.stat-label {
-  display: block;
-  font-size: 0.85rem;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
-
-@media (max-width: 640px) {
-  .scan-header h1 {
-    font-size: 1.5rem;
-  }
-
-  .scan-view {
-    padding: 1rem 0.5rem;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .btn-toggle {
-    padding: 0.875rem 2rem;
-    font-size: 1rem;
-  }
-}
-</style>
