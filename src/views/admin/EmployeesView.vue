@@ -39,7 +39,7 @@ const employeeStore = useEmployeeStore()
 const { toast } = useToast()
 
 const searchQuery = ref('')
-const selectedDepartment = ref('')
+const selectedDepartment = ref('all')
 const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
 const showBulkUpload = ref(false)
 const employeeToDelete = ref<Employee | null>(null)
@@ -65,7 +65,7 @@ const filteredEmployees = computed(() => {
   }
 
   // Department filter
-  if (selectedDepartment.value) {
+  if (selectedDepartment.value && selectedDepartment.value !== 'all') {
     result = result.filter(emp => emp.department === selectedDepartment.value)
   }
 
@@ -219,7 +219,7 @@ const handleBulkUpload = async (_count: number) => {
               <SelectValue placeholder="All Departments" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Departments</SelectItem>
+              <SelectItem value="all">All Departments</SelectItem>
               <SelectItem v-for="dept in DEPARTMENTS" :key="dept" :value="dept">
                 {{ dept }}
               </SelectItem>
