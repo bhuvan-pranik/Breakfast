@@ -1,49 +1,14 @@
 <template>
-  <div class="unauthorized-view">
-    <div class="content">
-      <h1>403 - Access Denied</h1>
-      <p>You don't have permission to access this page.</p>
-      <RouterLink to="/" class="btn-home">Go to Home</RouterLink>
+  <div class="min-h-screen flex items-center justify-center p-5 bg-gray-50">
+    <div class="text-center">
+      <h1 class="text-5xl font-bold text-red-600 mb-4">403 - Access Denied</h1>
+      <p class="text-xl text-gray-600 mb-8">You don't have permission to access this page.</p>
+      <RouterLink 
+        to="/" 
+        class="inline-flex items-center justify-center px-8 py-3 bg-[#667eea] text-white rounded-lg hover:bg-[#5568d3] transition-colors duration-200"
+      >
+        Go to Home
+      </RouterLink>
     </div>
   </div>
 </template>
-
-<style scoped>
-.unauthorized-view {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.content {
-  text-align: center;
-}
-
-.content h1 {
-  font-size: 3rem;
-  color: #dc3545;
-  margin-bottom: 1rem;
-}
-
-.content p {
-  font-size: 1.25rem;
-  color: #666;
-  margin-bottom: 2rem;
-}
-
-.btn-home {
-  display: inline-block;
-  padding: 0.75rem 2rem;
-  background: #667eea;
-  color: white;
-  text-decoration: none;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.btn-home:hover {
-  background: #5568d3;
-}
-</style>
