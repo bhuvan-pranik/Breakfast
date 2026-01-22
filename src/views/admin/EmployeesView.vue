@@ -2,27 +2,12 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEmployeeStore } from '@/stores/employee.store'
-import { DEPARTMENTS } from '@/utils/constants'
+import { usePagination } from '@/composables/usePagination'
 import type { Employee } from '@/types'
 import BulkUploadModal from '@/components/BulkUploadModal.vue'
+import EmployeeFilters from '@/components/employee/EmployeeFilters.vue'
+import EmployeeTable from '@/components/employee/EmployeeTable.vue'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -31,8 +16,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useToast } from '@/components/ui/toast'
-import { Plus, Pencil, Trash2, Eye, Search, Download } from 'lucide-vue-next'
+import { Plus, Download, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 const router = useRouter()
 const employeeStore = useEmployeeStore()
@@ -76,6 +68,26 @@ const filteredEmployees = computed(() => {
   }
 
   return result
+})
+
+// Pagination
+const {
+  paginatedItems: paginatedEmployees,
+  currentPage,
+  pageSize,
+  totalPages,
+  totalItems,
+  rangeText,
+  pageNumbers,
+  nextPage,
+  previousPage,
+  goToPage,
+  setPageSize,
+  hasPrevious,
+  hasNext
+} = usePagination(() => filteredEmployees.value, {
+  initialPageSize: 20,
+  pageSizeOptions: [10, 20, 50, 100]
 })
 
 const createEmployee = () => {
@@ -198,144 +210,71 @@ const handleBulkUpload = async (_count: number) => {
     </div>
 
     <!-- Filters -->
-    <div class="bg-card rounded-lg border p-6 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Search</label>
-          <div class="relative">
-            <Search class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              v-model="searchQuery"
-              placeholder="Search by name, phone, or department..."
-              class="pl-9"
-            />
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Department</label>
-          <Select v-model="selectedDepartment">
-            <SelectTrigger>
-              <SelectValue placeholder="All Departments" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Departments</SelectItem>
-              <SelectItem v-for="dept in DEPARTMENTS" :key="dept" :value="dept">
-                {{ dept }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Status</label>
-          <Select v-model="statusFilter">
-            <SelectTrigger>
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active Only</SelectItem>
-              <SelectItem value="inactive">Inactive Only</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div class="text-sm text-muted-foreground">
-        {{ filteredEmployees.length }} employee{{ filteredEmployees.length !== 1 ? 's' : '' }} found
-      </div>
-    </div>
+    <EmployeeFilters
+      v-model:search-query="searchQuery"
+      v-model:selected-department="selectedDepartment"
+      v-model:status-filter="statusFilter"
+      :result-count="filteredEmployees.length"
+    />
 
     <!-- Employees Table -->
-    <div class="bg-card rounded-lg border overflow-hidden">
-      <Table v-if="filteredEmployees.length > 0">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Employee ID</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Department</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead class="w-[200px]">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="employee in filteredEmployees" :key="employee.phone">
-            <TableCell class="font-medium">{{ employee.name }}</TableCell>
-            <TableCell class="font-mono">{{ employee.phone }}</TableCell>
-            <TableCell>{{ employee.employee_id }}</TableCell>
-            <TableCell>{{ employee.email }}</TableCell>
-            <TableCell>
-              <Badge variant="secondary">{{ employee.department }}</Badge>
-            </TableCell>
-            <TableCell>
-              <Badge :variant="employee.is_active ? 'default' : 'secondary'">
-                {{ employee.is_active ? 'Active' : 'Inactive' }}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              <div class="flex items-center gap-1">
-                <Button
-                  @click="viewEmployee(employee.phone)"
-                  variant="ghost"
-                  size="sm"
-                  title="View Details"
-                >
-                  <Eye class="w-4 h-4" />
-                </Button>
-                <Button
-                  @click="editEmployee(employee.phone)"
-                  variant="ghost"
-                  size="sm"
-                  title="Edit"
-                >
-                  <Pencil class="w-4 h-4" />
-                </Button>
-                <Button
-                  @click="downloadQR(employee)"
-                  variant="ghost"
-                  size="sm"
-                  title="Download QR"
-                >
-                  <Download class="w-4 h-4" />
-                </Button>
-                <Button
-                  @click="toggleStatus(employee)"
-                  variant="ghost"
-                  size="sm"
-                  :title="employee.is_active ? 'Deactivate' : 'Activate'"
-                >
-                  <span :class="employee.is_active ? 'text-red-500' : 'text-green-500'">
-                    {{ employee.is_active ? '●' : '●' }}
-                  </span>
-                </Button>
-                <Button
-                  @click="confirmDeleteEmployee(employee)"
-                  variant="ghost"
-                  size="sm"
-                  title="Delete"
-                  class="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 class="w-4 h-4" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+    <EmployeeTable
+      :employees="paginatedEmployees"
+      :is-loading="employeeStore.isLoading"
+      @view="viewEmployee"
+      @edit="editEmployee"
+      @delete="confirmDeleteEmployee"
+      @download-qr="downloadQR"
+      @toggle-status="toggleStatus"
+      @create="createEmployee"
+    />
 
-      <div v-else-if="employeeStore.isLoading" class="flex flex-col items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-        <p class="text-muted-foreground">Loading employees...</p>
+    <!-- Pagination -->
+    <div v-if="filteredEmployees.length > 0" class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-card rounded-lg border p-4">
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-muted-foreground">Rows per page:</span>
+        <Select :model-value="pageSize.toString()" @update:model-value="setPageSize(Number($event))">
+          <SelectTrigger class="w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="20">20</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
+        <span class="text-sm text-muted-foreground ml-4">{{ rangeText }}</span>
       </div>
 
-      <div v-else class="flex flex-col items-center justify-center py-12">
-        <p class="text-muted-foreground mb-4">No employees found</p>
-        <Button @click="createEmployee">
-          <Plus class="w-4 h-4 mr-2" />
-          Create First Employee
+      <div class="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          @click="previousPage"
+          :disabled="!hasPrevious"
+        >
+          <ChevronLeft class="w-4 h-4" />
+        </Button>
+
+        <Button
+          v-for="page in pageNumbers"
+          :key="page"
+          variant="outline"
+          size="sm"
+          @click="goToPage(page)"
+          :class="{ 'bg-primary text-primary-foreground': page === currentPage }"
+        >
+          {{ page }}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          @click="nextPage"
+          :disabled="!hasNext"
+        >
+          <ChevronRight class="w-4 h-4" />
         </Button>
       </div>
     </div>
