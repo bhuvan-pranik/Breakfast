@@ -18,6 +18,10 @@ export const useEmployeeStore = defineStore('employee', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
+  // Cache management
+  const lastFetchTime = ref<number>(0)
+  const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
   const filters = ref<EmployeeFilters>({
     search: '',
     department: undefined,
@@ -82,14 +86,24 @@ export const useEmployeeStore = defineStore('employee', () => {
 
   /**
    * Fetch all employees
+   * @param force - Force refresh, bypassing cache
    */
-  async function fetchEmployees(): Promise<void> {
+  async function fetchEmployees(force = false): Promise<void> {
+    // Use cache if available and not expired (unless force refresh)
+    if (!force && employees.value.length > 0) {
+      const cacheAge = Date.now() - lastFetchTime.value
+      if (cacheAge < CACHE_DURATION) {
+        return // Use cached data
+      }
+    }
+
     isLoading.value = true
     error.value = null
 
     try {
       employees.value = await employeeService.getAll()
       pagination.value.total = employees.value.length
+      lastFetchTime.value = Date.now()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to fetch employees'
       throw e
@@ -126,6 +140,7 @@ export const useEmployeeStore = defineStore('employee', () => {
       const employee = await employeeService.create(input)
       employees.value.unshift(employee)
       pagination.value.total++
+      lastFetchTime.value = Date.now() // Update cache timestamp
       return employee
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to create employee'
@@ -151,6 +166,7 @@ export const useEmployeeStore = defineStore('employee', () => {
       if (selectedEmployee.value?.phone === phone) {
         selectedEmployee.value = updated
       }
+      lastFetchTime.value = Date.now() // Update cache timestamp
       return updated
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to update employee'
@@ -173,6 +189,7 @@ export const useEmployeeStore = defineStore('employee', () => {
       if (index !== -1 && employees.value[index]) {
         employees.value[index].is_active = false
       }
+      lastFetchTime.value = Date.now() // Update cache timestamp
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to delete employee'
       throw e
