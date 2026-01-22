@@ -43,23 +43,26 @@ const startScanning = async () => {
   if (!html5QrCode || isScanning.value) return
 
   try {
-    const config = {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
-      aspectRatio: 1.0
-    }
-
     await html5QrCode.start(
       { facingMode: 'environment' },
-      config,
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+      },
       onScanSuccess,
-      onScanError
+      () => {} // Suppress continuous scanning errors
     )
 
     isScanning.value = true
     isCameraReady.value = true
   } catch (error) {
     console.error('Error starting scanner:', error)
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
+    
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     
     // Provide more specific error messages
@@ -141,11 +144,6 @@ const onScanSuccess = async (decodedText: string) => {
     }
     uiStore.showError('Failed to record attendance')
   }
-}
-
-const onScanError = (_errorMessage: string) => {
-  // Suppress continuous scanning errors
-  // console.log('Scan error:', _errorMessage)
 }
 
 const toggleScanning = async () => {
