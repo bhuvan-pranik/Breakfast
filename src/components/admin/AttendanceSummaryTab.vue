@@ -44,6 +44,11 @@ const sortedRecords = computed(() => {
     const aVal = a[sortColumn.value]
     const bVal = b[sortColumn.value]
     
+    // Handle null/undefined values
+    if (aVal == null && bVal == null) return 0
+    if (aVal == null) return 1
+    if (bVal == null) return -1
+    
     if (aVal < bVal) return sortDirection.value === 'asc' ? -1 : 1
     if (aVal > bVal) return sortDirection.value === 'asc' ? 1 : -1
     return 0

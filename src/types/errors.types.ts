@@ -19,31 +19,35 @@ export interface AppError extends Error {
 /**
  * Error severity levels
  */
-export enum ErrorSeverity {
-  INFO = 'info',
-  WARNING = 'warning',
-  ERROR = 'error',
-  CRITICAL = 'critical'
-}
+export const ErrorSeverity = {
+  INFO: 'info',
+  WARNING: 'warning',
+  ERROR: 'error',
+  CRITICAL: 'critical'
+} as const
+
+export type ErrorSeverityType = typeof ErrorSeverity[keyof typeof ErrorSeverity]
 
 /**
  * Error categories for classification
  */
-export enum ErrorCategory {
-  VALIDATION = 'validation',
-  AUTHENTICATION = 'authentication',
-  AUTHORIZATION = 'authorization',
-  NETWORK = 'network',
-  DATABASE = 'database',
-  BUSINESS_LOGIC = 'business_logic',
-  UNKNOWN = 'unknown'
-}
+export const ErrorCategory = {
+  VALIDATION: 'validation',
+  AUTHENTICATION: 'authentication',
+  AUTHORIZATION: 'authorization',
+  NETWORK: 'network',
+  DATABASE: 'database',
+  BUSINESS_LOGIC: 'business_logic',
+  UNKNOWN: 'unknown'
+} as const
+
+export type ErrorCategoryType = typeof ErrorCategory[keyof typeof ErrorCategory]
 
 /**
  * Validation error with field-specific details
  */
 export interface ValidationError extends AppError {
-  category: ErrorCategory.VALIDATION
+  category: typeof ErrorCategory.VALIDATION
   fields?: Record<string, string[]>
 }
 
@@ -51,14 +55,14 @@ export interface ValidationError extends AppError {
  * Authentication error
  */
 export interface AuthenticationError extends AppError {
-  category: ErrorCategory.AUTHENTICATION
+  category: typeof ErrorCategory.AUTHENTICATION
 }
 
 /**
  * Authorization error (insufficient permissions)
  */
 export interface AuthorizationError extends AppError {
-  category: ErrorCategory.AUTHORIZATION
+  category: typeof ErrorCategory.AUTHORIZATION
   requiredRole?: string
   userRole?: string
 }
@@ -67,7 +71,7 @@ export interface AuthorizationError extends AppError {
  * Network/connection error
  */
 export interface NetworkError extends AppError {
-  category: ErrorCategory.NETWORK
+  category: typeof ErrorCategory.NETWORK
   isOnline?: boolean
   retryable?: boolean
 }
@@ -76,7 +80,7 @@ export interface NetworkError extends AppError {
  * Database operation error
  */
 export interface DatabaseError extends AppError {
-  category: ErrorCategory.DATABASE
+  category: typeof ErrorCategory.DATABASE
   query?: string
   table?: string
 }
@@ -85,7 +89,7 @@ export interface DatabaseError extends AppError {
  * Business logic error (e.g., duplicate scan, employee not found)
  */
 export interface BusinessLogicError extends AppError {
-  category: ErrorCategory.BUSINESS_LOGIC
+  category: typeof ErrorCategory.BUSINESS_LOGIC
 }
 
 /**
@@ -104,8 +108,8 @@ export interface SupabaseError {
  */
 export interface ErrorHandlerResult {
   userMessage: string
-  severity: ErrorSeverity
-  category: ErrorCategory
+  severity: ErrorSeverityType
+  category: ErrorCategoryType
   shouldLog: boolean
   shouldNotify: boolean
   retryable: boolean

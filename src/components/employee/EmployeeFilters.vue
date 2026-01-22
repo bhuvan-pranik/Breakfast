@@ -36,7 +36,7 @@ const emit = defineEmits<Emits>()
           <Search class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             :model-value="searchQuery"
-            @update:model-value="emit('update:searchQuery', $event)"
+            @update:model-value="emit('update:searchQuery', String($event))"
             placeholder="Search by name, phone, or department..."
             class="pl-9"
           />
@@ -47,7 +47,7 @@ const emit = defineEmits<Emits>()
         <label class="text-sm font-medium">Department</label>
         <Select
           :model-value="selectedDepartment"
-          @update:model-value="emit('update:selectedDepartment', $event)"
+          @update:model-value="emit('update:selectedDepartment', String($event || ''))"
         >
           <SelectTrigger>
             <SelectValue placeholder="All Departments" />
