@@ -12,6 +12,7 @@ import type { AttendanceRecord } from '@/types'
 import DateRangePicker from '@/components/admin/DateRangePicker.vue'
 import ReportSummaryCards from '@/components/admin/ReportSummaryCards.vue'
 import AttendanceSummaryTab from '@/components/admin/AttendanceSummaryTab.vue'
+import EmployeeReportTab from '@/components/admin/EmployeeReportTab.vue'
 
 const { toast } = useToast()
 
@@ -104,6 +105,43 @@ const exportAttendanceCSV = () => {
   })
   
   const filename = `attendance-report-${dateRange.value.start?.toISOString().split('T')[0]}-to-${dateRange.value.end?.toISOString().split('T')[0]}.csv`
+  downloadCSV(csv, filename)
+}
+
+const exportEmployeeCSV = () => {
+  // Compute employee statistics
+  const statsMap = new Map<string, any>()
+  
+  records.value.forEach(record => {
+    if (!statsMap.has(record.employee_phone)) {
+      statsMap.set(record.employee_phone, {
+        phone: record.employee_phone,
+        totalScans: 0,
+        successfulScans: 0,
+        duplicateScans: 0
+      })
+    }
+    
+    const stats = statsMap.get(record.employee_phone)!
+    stats.totalScans++
+    if (record.status === 'success') stats.successfulScans++
+    if (record.status === 'duplicate') stats.duplicateScans++
+  })
+  
+  // Calculate attendance rate
+  const totalDays = new Set(records.value.map(r => r.scan_date)).size
+  
+  let csv = 'Employee Phone,Total Scans,Successful Scans,Duplicate Scans,Attendance Rate\n'
+  statsMap.forEach(stats => {
+    const attendanceRate = totalDays > 0 ? Math.round((stats.successfulScans / totalDays) * 100) : 0
+    csv += `${stats.phone},${stats.totalScans},${stats.successfulScans},${stats.duplicateScans},${attendanceRate}%\n`
+  })
+  
+  const filename = `employee-report-${dateRange.value.start?.toISOString().split('T')[0]}-to-${dateRange.value.end?.toISOString().split('T')[0]}.csv`
+  downloadCSV(csv, filename)
+}
+
+const downloadCSV = (csv: string, filename: string) => {
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = window.URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -178,9 +216,11 @@ onMounted(() => {
 
       <!-- Employee Reports Tab -->
       <TabsContent value="employees">
-        <div class="text-center py-12 text-muted-foreground">
-          Employee reports coming soon...
-        </div>
+        <EmployeeReportTab
+          :records="records"
+          :is-loading="isLoading"
+          @export="exportEmployeeCSV"
+        />
       </TabsContent>
 
       <!-- Scanner Reports Tab -->
