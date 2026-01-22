@@ -8,9 +8,10 @@
 -- Create employees table
 CREATE TABLE IF NOT EXISTS employees (
   phone VARCHAR(15) PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  department VARCHAR(100) NOT NULL,
-  gender VARCHAR(20) NOT NULL CHECK (gender IN ('Male', 'Female', 'Other')),
+  name VARCHAR(255),
+  department VARCHAR(100),
+  employee_id VARCHAR(50),
+  email VARCHAR(255),
   qr_code TEXT NOT NULL UNIQUE,
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -50,6 +51,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_qr_code ON employees(qr_code);
 CREATE INDEX IF NOT EXISTS idx_employees_is_active ON employees(is_active);
 CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department);
 CREATE INDEX IF NOT EXISTS idx_employees_name ON employees(LOWER(name));
+CREATE INDEX IF NOT EXISTS idx_employees_employee_id ON employees(employee_id) WHERE employee_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_employees_email ON employees(LOWER(email)) WHERE email IS NOT NULL;
 
 -- Scanner accounts indexes
 CREATE UNIQUE INDEX IF NOT EXISTS idx_scanner_accounts_id ON scanner_accounts(id);
