@@ -4,6 +4,15 @@ import { useAttendanceStore } from '@/stores/attendance.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { formatTime } from '@/utils/formatters'
 import type { AttendanceRecord } from '@/types'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Calendar, Download, Filter, RefreshCw, History } from 'lucide-vue-next'
 
 const attendanceStore = useAttendanceStore()
 const authStore = useAuthStore()
@@ -40,14 +49,18 @@ const duplicateCount = computed(() =>
   filteredRecords.value.filter((r: AttendanceRecord) => r.status === 'duplicate').length
 )
 
-const getStatusClass = (status: string) => {
-  const classes: Record<string, string> = {
-    success: 'status-success',
-    duplicate: 'status-warning',
-    invalid: 'status-error',
-    inactive: 'status-error'
+const invalidCount = computed(() => 
+  filteredRecords.value.filter((r: AttendanceRecord) => r.status === 'invalid' || r.status === 'inactive').length
+)
+
+const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+  const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+    success: 'default',
+    duplicate: 'secondary',
+    invalid: 'destructive',
+    inactive: 'destructive'
   }
-  return classes[status] || ''
+  return variants[status] || 'outline'
 }
 
 const getStatusLabel = (status: string) => {
@@ -59,317 +72,196 @@ const getStatusLabel = (status: string) => {
   }
   return labels[status] || status
 }
+
+const exportToCSV = () => {
+  const headers = ['Time', 'Employee Phone', 'Status', 'Message']
+  const rows = filteredRecords.value.map(record => [
+    formatTime(record.scan_timestamp),
+    record.employee_phone,
+    getStatusLabel(record.status),
+    record.validation_message || ''
+  ])
+  
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n')
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `scan-history-${selectedDate.value}.csv`
+  link.click()
+}
 </script>
 
 <template>
-  <div class="scan-history-view">
-    <div class="header">
-      <h1>Scan History</h1>
-    </div>
-
-    <div class="filters-card">
-      <div class="filters">
-        <div class="filter-group">
-          <label for="date">Date</label>
-          <input
-            id="date"
-            v-model="selectedDate"
-            type="date"
-            @change="loadHistory"
-            class="date-input"
-          />
+  <div class="min-h-screen bg-gray-50 p-4 md:p-8">
+    <div class="max-w-6xl mx-auto space-y-6">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Scan History</h1>
+          <p class="text-gray-600 mt-1">View and manage attendance scan records</p>
         </div>
-
-        <div class="filter-group">
-          <label for="status">Status</label>
-          <select id="status" v-model="statusFilter" class="status-select">
-            <option value="all">All Status</option>
-            <option value="success">Success Only</option>
-            <option value="duplicate">Duplicates Only</option>
-            <option value="invalid">Invalid Only</option>
-          </select>
-        </div>
+        <Button variant="outline" @click="loadHistory" class="gap-2">
+          <RefreshCw class="w-4 h-4" />
+          Refresh
+        </Button>
       </div>
 
-      <div class="stats-summary">
-        <div class="stat">
-          <span class="stat-value">{{ filteredRecords.length }}</span>
-          <span class="stat-label">Total Scans</span>
-        </div>
-        <div class="stat success">
-          <span class="stat-value">{{ successCount }}</span>
-          <span class="stat-label">Successful</span>
-        </div>
-        <div class="stat warning">
-          <span class="stat-value">{{ duplicateCount }}</span>
-          <span class="stat-label">Duplicates</span>
-        </div>
-      </div>
-    </div>
+      <!-- Filters Card -->
+      <Card class="shadow-sm">
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2">
+            <Filter class="w-5 h-5" />
+            Filters
+          </CardTitle>
+          <CardDescription>Filter scan records by date and status</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Date Filter -->
+            <div class="space-y-2">
+              <Label for="date" class="flex items-center gap-2">
+                <Calendar class="w-4 h-4" />
+                Date
+              </Label>
+              <Input
+                id="date"
+                v-model="selectedDate"
+                type="date"
+                @change="loadHistory"
+                class="w-full"
+              />
+            </div>
 
-    <div class="history-container">
-      <div v-if="filteredRecords.length > 0" class="history-list">
-        <div
-          v-for="record in filteredRecords"
-          :key="record.id"
-          class="history-item"
-        >
-          <div class="scan-time">
-            {{ formatTime(record.scan_timestamp) }}
-          </div>
-          <div class="scan-details">
-            <div class="employee-name">{{ record.employee_phone }}</div>
-            <div class="employee-meta">
-              <span>Phone: {{ record.employee_phone }}</span>
+            <!-- Status Filter -->
+            <div class="space-y-2">
+              <Label for="status" class="flex items-center gap-2">
+                <Filter class="w-4 h-4" />
+                Status
+              </Label>
+              <Select v-model="statusFilter">
+                <SelectTrigger id="status" class="w-full">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="success">Success Only</SelectItem>
+                  <SelectItem value="duplicate">Duplicates Only</SelectItem>
+                  <SelectItem value="invalid">Invalid Only</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div class="scan-status">
-            <span class="status-badge" :class="getStatusClass(record.status)">
-              {{ getStatusLabel(record.status) }}
-            </span>
-            <p v-if="record.validation_message" class="status-message">
-              {{ record.validation_message }}
-            </p>
+
+          <!-- Stats Summary -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 pt-6 border-t">
+            <div class="bg-indigo-50 rounded-lg p-4 text-center border-l-4 border-indigo-500">
+              <div class="text-2xl font-bold text-gray-900 mb-1">
+                {{ filteredRecords.length }}
+              </div>
+              <div class="text-sm text-gray-600">Total Scans</div>
+            </div>
+
+            <div class="bg-green-50 rounded-lg p-4 text-center border-l-4 border-green-500">
+              <div class="text-2xl font-bold text-gray-900 mb-1">
+                {{ successCount }}
+              </div>
+              <div class="text-sm text-gray-600">Successful</div>
+            </div>
+
+            <div class="bg-orange-50 rounded-lg p-4 text-center border-l-4 border-orange-500">
+              <div class="text-2xl font-bold text-gray-900 mb-1">
+                {{ duplicateCount }}
+              </div>
+              <div class="text-sm text-gray-600">Duplicates</div>
+            </div>
+
+            <div class="bg-red-50 rounded-lg p-4 text-center border-l-4 border-red-500">
+              <div class="text-2xl font-bold text-gray-900 mb-1">
+                {{ invalidCount }}
+              </div>
+              <div class="text-sm text-gray-600">Invalid</div>
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div v-else-if="attendanceStore.isLoading" class="empty-state">
-        <div class="spinner"></div>
-        <p>Loading history...</p>
-      </div>
+      <!-- History Table Card -->
+      <Card class="shadow-sm">
+        <CardHeader>
+          <div class="flex items-center justify-between">
+            <div>
+              <CardTitle class="flex items-center gap-2">
+                <History class="w-5 h-5" />
+                Scan Records
+              </CardTitle>
+              <CardDescription>
+                {{ filteredRecords.length }} records found for {{ selectedDate }}
+              </CardDescription>
+            </div>
+            <Button variant="outline" @click="exportToCSV" class="gap-2" :disabled="filteredRecords.length === 0">
+              <Download class="w-4 h-4" />
+              Export CSV
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <!-- Loading State -->
+          <div v-if="attendanceStore.isLoading" class="space-y-4">
+            <div v-for="i in 5" :key="i" class="flex items-center space-x-4">
+              <Skeleton class="h-12 w-24" />
+              <Skeleton class="h-12 flex-1" />
+              <Skeleton class="h-12 w-32" />
+            </div>
+          </div>
 
-      <div v-else class="empty-state">
-        <p>No scans found for this date</p>
-      </div>
+          <!-- Empty State -->
+          <div v-else-if="filteredRecords.length === 0" class="text-center py-12">
+            <History class="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p class="text-gray-500 text-lg">No scans found for this date</p>
+            <p class="text-gray-400 text-sm mt-1">Try selecting a different date or adjusting filters</p>
+          </div>
+
+          <!-- Table -->
+          <div v-else class="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead class="w-[120px]">Time</TableHead>
+                  <TableHead>Employee Phone</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead class="w-[200px]">Message</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow
+                  v-for="record in filteredRecords"
+                  :key="record.id"
+                  class="hover:bg-gray-50 transition-colors"
+                >
+                  <TableCell class="font-medium text-indigo-600">
+                    {{ formatTime(record.scan_timestamp) }}
+                  </TableCell>
+                  <TableCell>
+                    <div class="font-medium">{{ record.employee_phone }}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge :variant="getStatusVariant(record.status)">
+                      {{ getStatusLabel(record.status) }}
+                    </Badge>
+                  </TableCell>
+                  <TableCell class="text-sm text-gray-600">
+                    {{ record.validation_message || '-' }}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>
-
-<style scoped>
-.scan-history-view {
-  padding: 2rem;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.header {
-  margin-bottom: 2rem;
-}
-
-.header h1 {
-  font-size: 1.75rem;
-  color: #333;
-}
-
-.filters-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-}
-
-.filters {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.filter-group label {
-  margin-bottom: 0.5rem;
-  color: #666;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.date-input,
-.status-select {
-  padding: 0.75rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.3s;
-}
-
-.date-input:focus,
-.status-select:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.stats-summary {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-.stat {
-  text-align: center;
-  padding: 1rem;
-  background: #f5f5f5;
-  border-radius: 8px;
-  border-left: 4px solid #667eea;
-}
-
-.stat.success {
-  border-left-color: #4caf50;
-}
-
-.stat.warning {
-  border-left-color: #ff9800;
-}
-
-.stat-value {
-  display: block;
-  font-size: 1.75rem;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 0.25rem;
-}
-
-.stat-label {
-  display: block;
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.history-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.history-list {
-  max-height: 600px;
-  overflow-y: auto;
-}
-
-.history-item {
-  display: grid;
-  grid-template-columns: 100px 1fr auto;
-  gap: 1.5rem;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background 0.2s;
-}
-
-.history-item:hover {
-  background: #f9f9f9;
-}
-
-.scan-time {
-  font-weight: 600;
-  color: #667eea;
-  font-size: 1.1rem;
-}
-
-.scan-details {
-  flex: 1;
-}
-
-.employee-name {
-  font-weight: 500;
-  color: #333;
-  font-size: 1.1rem;
-  margin-bottom: 0.25rem;
-}
-
-.employee-meta {
-  color: #999;
-  font-size: 0.9rem;
-}
-
-.separator {
-  margin: 0 0.5rem;
-}
-
-.scan-status {
-  text-align: right;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.status-success {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.status-warning {
-  background: #fff3e0;
-  color: #f57c00;
-}
-
-.status-error {
-  background: #ffebee;
-  color: #c62828;
-}
-
-.status-message {
-  margin: 0.5rem 0 0 0;
-  font-size: 0.85rem;
-  color: #999;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #999;
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #e0e0e0;
-  border-top-color: #667eea;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@media (max-width: 768px) {
-  .scan-history-view {
-    padding: 1rem;
-  }
-
-  .filters {
-    grid-template-columns: 1fr;
-  }
-
-  .stats-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .history-item {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-
-  .scan-time {
-    font-size: 0.95rem;
-  }
-
-  .scan-status {
-    text-align: left;
-  }
-}
-</style>

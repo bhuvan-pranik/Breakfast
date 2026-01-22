@@ -17,6 +17,10 @@ export const useScannerStore = defineStore('scanner', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
+  // Cache management
+  const lastFetchTime = ref<number>(0)
+  const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
   // ============================================================================
   // GETTERS
   // ============================================================================
@@ -38,13 +42,24 @@ export const useScannerStore = defineStore('scanner', () => {
 
   /**
    * Fetch all scanners
+   * @param activeOnly - Only fetch active scanners
+   * @param force - Force refresh, bypassing cache
    */
-  async function fetchScanners(activeOnly = false): Promise<void> {
+  async function fetchScanners(activeOnly = false, force = false): Promise<void> {
+    // Use cache if available and not expired (unless force refresh)
+    if (!force && scanners.value.length > 0) {
+      const cacheAge = Date.now() - lastFetchTime.value
+      if (cacheAge < CACHE_DURATION) {
+        return // Use cached data
+      }
+    }
+
     isLoading.value = true
     error.value = null
 
     try {
       scanners.value = await scannerService.getAll(activeOnly)
+      lastFetchTime.value = Date.now()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to fetch scanners'
       throw e
@@ -80,6 +95,7 @@ export const useScannerStore = defineStore('scanner', () => {
     try {
       const scanner = await scannerService.create(input)
       scanners.value.unshift(scanner)
+      lastFetchTime.value = Date.now() // Update cache timestamp
       return scanner
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to create scanner'
@@ -102,6 +118,7 @@ export const useScannerStore = defineStore('scanner', () => {
       if (index !== -1) {
         scanners.value[index] = updated
       }
+      lastFetchTime.value = Date.now() // Update cache timestamp
       return updated
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to update scanner'
@@ -124,6 +141,7 @@ export const useScannerStore = defineStore('scanner', () => {
       if (index !== -1 && scanners.value[index]) {
         scanners.value[index].is_active = false
       }
+      lastFetchTime.value = Date.now() // Update cache timestamp
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to deactivate scanner'
       throw e
@@ -145,6 +163,7 @@ export const useScannerStore = defineStore('scanner', () => {
       if (index !== -1 && scanners.value[index]) {
         scanners.value[index].is_active = true
       }
+      lastFetchTime.value = Date.now() // Update cache timestamp
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to activate scanner'
       throw e

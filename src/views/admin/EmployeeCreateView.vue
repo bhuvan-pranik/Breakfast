@@ -1,93 +1,96 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEmployeeStore } from '@/stores/employee.store'
-import { useUIStore } from '@/stores/ui.store'
 import { DEPARTMENTS } from '@/utils/constants'
-import { validatePhone, validateEmail } from '@/utils/validators'
-import type { EmployeeFormData } from '@/types'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { useToast } from '@/components/ui/toast'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import * as z from 'zod'
+import { ArrowLeft, Download, Check } from 'lucide-vue-next'
+
+// Form validation schema
+const formSchema = z.object({
+  phone: z
+    .string()
+    .min(1, 'Phone number is required')
+    .regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit phone number'),
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be less than 100 characters'),
+  department: z
+    .string()
+    .min(1, 'Department is required'),
+  employee_id: z
+    .string()
+    .min(2, 'Employee ID is required')
+    .max(50, 'Employee ID must be less than 50 characters'),
+  email: z
+    .string()
+    .min(1, 'Email is required')
+    .email('Please enter a valid email address'),
+  is_active: z.boolean().default(true),
+})
+
+type FormData = z.infer<typeof formSchema>
 
 const router = useRouter()
 const employeeStore = useEmployeeStore()
-const uiStore = useUIStore()
-
-const formData = reactive<EmployeeFormData>({
-  phone: '',
-  name: '',
-  department: '',
-  employee_id: '',
-  email: '',
-  is_active: true
-})
-
-const errors = reactive({
-  phone: '',
-  name: '',
-  department: '',
-  employee_id: '',
-  email: ''
-})
+const { toast } = useToast()
 
 const isSubmitting = ref(false)
 const generatedQR = ref<string | null>(null)
 const showQRPreview = ref(false)
 
-const validateForm = (): boolean => {
-  errors.phone = ''
-  errors.name = ''
-  errors.department = ''
-  errors.employee_id = ''
-  errors.email = ''
+const form = useForm<FormData>({
+  validationSchema: toTypedSchema(formSchema),
+  initialValues: {
+    phone: '',
+    name: '',
+    department: '',
+    employee_id: '',
+    email: '',
+    is_active: true,
+  },
+})
 
-  if (!formData.phone) {
-    errors.phone = 'Phone number is required'
-    return false
-  }
-
-  if (!validatePhone(formData.phone)) {
-    errors.phone = 'Please enter a valid 10-digit phone number'
-    return false
-  }
-
-  if (!formData.name || formData.name.trim().length < 2) {
-    errors.name = 'Name must be at least 2 characters'
-    return false
-  }
-
-  if (!formData.department) {
-    errors.department = 'Department is required'
-    return false
-  }
-
-  if (!formData.employee_id || formData.employee_id.trim().length < 2) {
-    errors.employee_id = 'Employee ID is required'
-    return false
-  }
-
-  if (!formData.email) {
-    errors.email = 'Email is required'
-    return false
-  }
-
-  if (!validateEmail(formData.email)) {
-    errors.email = 'Please enter a valid email address'
-    return false
-  }
-
-  return true
-}
-
-const handleSubmit = async () => {
-  if (!validateForm()) {
-    return
-  }
-
+const handleSubmit = async (values: FormData) => {
   isSubmitting.value = true
 
   try {
-    const created = await employeeStore.createEmployee(formData)
-    uiStore.showSuccess('Employee created successfully!')
-    
+    const created = await employeeStore.createEmployee(values)
+    toast({
+      title: 'Success',
+      description: 'Employee created successfully!',
+    })
+
     // Show QR code preview
     if (created && created.qr_code) {
       generatedQR.value = created.qr_code
@@ -97,7 +100,11 @@ const handleSubmit = async () => {
       router.push('/admin/employees')
     }
   } catch (error: any) {
-    uiStore.showError(error.message || 'Failed to create employee')
+    toast({
+      title: 'Error',
+      description: error.message || 'Failed to create employee',
+      variant: 'destructive',
+    })
   } finally {
     isSubmitting.value = false
   }
@@ -109,13 +116,22 @@ const downloadQR = async () => {
   try {
     const { qrcodeService } = await import('@/services/qrcode.service')
     const dataUrl = await qrcodeService.generateQRCodeImage(generatedQR.value)
-    
+
     const link = document.createElement('a')
-    link.download = `${formData.name}-QR.png`
+    link.download = `${form.values.name}-QR.png`
     link.href = dataUrl
     link.click()
+
+    toast({
+      title: 'Success',
+      description: 'QR code downloaded',
+    })
   } catch (error) {
-    uiStore.showError('Failed to download QR code')
+    toast({
+      title: 'Error',
+      description: 'Failed to download QR code',
+      variant: 'destructive',
+    })
   }
 }
 
@@ -129,386 +145,180 @@ const cancel = () => {
 </script>
 
 <template>
-  <div class="employee-create">
-    <div class="header">
-      <h1>Create New Employee</h1>
-      <button @click="cancel" class="btn-cancel">Cancel</button>
-    </div>
-
-    <div v-if="!showQRPreview" class="form-container">
-      <form @submit.prevent="handleSubmit">
-        <!-- Phone Number -->
-        <div class="form-group">
-          <label for="phone">Phone Number <span class="required">*</span></label>
-          <input
-            id="phone"
-            v-model="formData.phone"
-            type="tel"
-            placeholder="10-digit phone number"
-            :class="{ 'error': errors.phone }"
-            maxlength="10"
-          />
-          <span v-if="errors.phone" class="error-message">{{ errors.phone }}</span>
-        </div>
-
-        <!-- Name -->
-        <div class="form-group">
-          <label for="name">Full Name <span class="required">*</span></label>
-          <input
-            id="name"
-            v-model="formData.name"
-            type="text"
-            placeholder="Employee full name"
-            :class="{ 'error': errors.name }"
-          />
-          <span v-if="errors.phone" class="error-message">{{ errors.name }}</span>
-        </div>
-
-        <!-- Department -->
-        <div class="form-group">
-          <label for="department">Department <span class="required">*</span></label>
-          <select
-            id="department"
-            v-model="formData.department"
-            :class="{ 'error': errors.department }"
-          >
-            <option value="">Select Department</option>
-            <option v-for="dept in DEPARTMENTS" :key="dept" :value="dept">
-              {{ dept }}
-            </option>
-          </select>
-          <span v-if="errors.department" class="error-message">{{ errors.department }}</span>
-        </div>
-
-        <!-- Employee ID -->
-        <div class="form-group">
-          <label for="employee_id">Employee ID <span class="required">*</span></label>
-          <input
-            id="employee_id"
-            v-model="formData.employee_id"
-            type="text"
-            placeholder="Employee ID"
-            :class="{ 'error': errors.employee_id }"
-          />
-          <span v-if="errors.employee_id" class="error-message">{{ errors.employee_id }}</span>
-        </div>
-
-        <!-- Email -->
-        <div class="form-group">
-          <label for="email">Email <span class="required">*</span></label>
-          <input
-            id="email"
-            v-model="formData.email"
-            type="email"
-            placeholder="employee@example.com"
-            :class="{ 'error': errors.email }"
-          />
-          <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
-        </div>
-
-        <!-- Active Status -->
-        <div class="form-group checkbox-group">
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="formData.is_active" />
-            <span>Active Employee</span>
-          </label>
-          <p class="help-text">Inactive employees cannot scan attendance</p>
-        </div>
-
-        <!-- Submit Button -->
-        <div class="form-actions">
-          <button type="button" @click="cancel" class="btn btn-secondary">
-            Cancel
-          </button>
-          <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
-            {{ isSubmitting ? 'Creating...' : 'Create Employee' }}
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- QR Code Preview Modal -->
-    <div v-else class="qr-preview">
-      <div class="preview-card">
-        <h2>✓ Employee Created Successfully!</h2>
-        
-        <div class="employee-info">
-          <h3>{{ formData.name }}</h3>
-          <p>{{ formData.department }}</p>
-          <p class="phone">{{ formData.phone }}</p>
-        </div>
-
-        <div class="qr-code">
-          <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${generatedQR}`" alt="QR Code" />
-        </div>
-
-        <div class="qr-actions">
-          <button @click="downloadQR" class="btn btn-success">
-            Download QR Code
-          </button>
-          <button @click="goToList" class="btn btn-primary">
-            Go to Employee List
-          </button>
-        </div>
-
-        <p class="qr-note">Print this QR code and give it to the employee</p>
+  <div class="container mx-auto py-8 px-4 max-w-2xl">
+    <div class="flex items-center gap-4 mb-8">
+      <Button variant="ghost" @click="cancel">
+        <ArrowLeft class="w-4 h-4 mr-2" />
+        Back
+      </Button>
+      <div>
+        <h1 class="text-3xl font-bold">Create New Employee</h1>
+        <p class="text-muted-foreground mt-1">
+          Add a new employee to the system
+        </p>
       </div>
+    </div>
+
+    <div v-if="!showQRPreview">
+      <Card>
+        <CardHeader>
+          <CardTitle>Employee Information</CardTitle>
+          <CardDescription>
+            Fill in the employee details below. All fields are required.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form :validation-schema="formSchema" @submit="form.handleSubmit(handleSubmit)" class="space-y-6">
+            <FormField v-slot="{ componentField }" name="phone">
+              <FormItem>
+                <FormLabel>Phone Number *</FormLabel>
+                <FormControl>
+                  <Input
+                    v-bind="componentField"
+                    type="tel"
+                    placeholder="10-digit phone number"
+                    maxlength="10"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <FormField v-slot="{ componentField }" name="name">
+              <FormItem>
+                <FormLabel>Full Name *</FormLabel>
+                <FormControl>
+                  <Input
+                    v-bind="componentField"
+                    type="text"
+                    placeholder="Employee full name"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <FormField v-slot="{ componentField }" name="department">
+              <FormItem>
+                <FormLabel>Department *</FormLabel>
+                <Select v-model="componentField.modelValue" @update:modelValue="componentField.onChange">
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Department" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem v-for="dept in DEPARTMENTS" :key="dept" :value="dept">
+                      {{ dept }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <FormField v-slot="{ componentField }" name="employee_id">
+              <FormItem>
+                <FormLabel>Employee ID *</FormLabel>
+                <FormControl>
+                  <Input
+                    v-bind="componentField"
+                    type="text"
+                    placeholder="Employee ID"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <FormField v-slot="{ componentField }" name="email">
+              <FormItem>
+                <FormLabel>Email *</FormLabel>
+                <FormControl>
+                  <Input
+                    v-bind="componentField"
+                    type="email"
+                    placeholder="employee@example.com"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <FormField v-slot="{ componentField }" name="is_active">
+              <FormItem class="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div class="space-y-0.5">
+                  <FormLabel class="text-base">Active Employee</FormLabel>
+                  <FormDescription>
+                    Inactive employees cannot scan attendance
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    v-bind="componentField"
+                    :checked="componentField.modelValue"
+                  />
+                </FormControl>
+              </FormItem>
+            </FormField>
+
+            <div class="flex gap-4 pt-4">
+              <Button type="button" variant="outline" @click="cancel" class="flex-1">
+                Cancel
+              </Button>
+              <Button type="submit" :disabled="isSubmitting" class="flex-1">
+                <Check class="w-4 h-4 mr-2" v-if="!isSubmitting" />
+                {{ isSubmitting ? 'Creating...' : 'Create Employee' }}
+              </Button>
+            </div>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
+
+    <!-- QR Code Preview -->
+    <div v-else>
+      <Card class="text-center">
+        <CardHeader>
+          <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <Check class="w-8 h-8 text-green-600" />
+          </div>
+          <CardTitle class="text-2xl">Employee Created Successfully!</CardTitle>
+          <CardDescription>
+            The employee has been added to the system
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-6">
+          <div class="bg-muted rounded-lg p-4">
+            <h3 class="font-semibold text-lg">{{ form.values.name }}</h3>
+            <p class="text-muted-foreground">{{ form.values.department }}</p>
+            <p class="font-mono text-sm">{{ form.values.phone }}</p>
+          </div>
+
+          <div class="bg-white border rounded-lg p-6 inline-block">
+            <img
+              :src="`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${generatedQR}`"
+              alt="QR Code"
+              class="max-w-full h-auto"
+            />
+          </div>
+
+          <div class="flex gap-4">
+            <Button @click="downloadQR" variant="outline" class="flex-1">
+              <Download class="w-4 h-4 mr-2" />
+              Download QR Code
+            </Button>
+            <Button @click="goToList" class="flex-1">
+              Go to Employee List
+            </Button>
+          </div>
+
+          <p class="text-sm text-muted-foreground">
+            Print this QR code and give it to the employee for attendance scanning
+          </p>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>
 
-<style scoped>
-.employee-create {
-  padding: 2rem;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.header h1 {
-  font-size: 1.75rem;
-  color: #333;
-}
-
-.btn-cancel {
-  padding: 0.5rem 1rem;
-  background: #e0e0e0;
-  color: #666;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.btn-cancel:hover {
-  background: #d0d0d0;
-}
-
-.form-container {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #333;
-  font-weight: 500;
-}
-
-.required {
-  color: #f44336;
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.3s;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.form-group input.error,
-.form-group select.error {
-  border-color: #f44336;
-}
-
-.error-message {
-  display: block;
-  color: #f44336;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
-}
-
-.checkbox-group {
-  border-top: 1px solid #e0e0e0;
-  padding-top: 1rem;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-weight: normal;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: auto;
-  cursor: pointer;
-}
-
-.help-text {
-  margin: 0.5rem 0 0 1.75rem;
-  font-size: 0.875rem;
-  color: #666;
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-.btn {
-  flex: 1;
-  padding: 0.875rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-secondary {
-  background: #e0e0e0;
-  color: #666;
-}
-
-.btn-secondary:hover {
-  background: #d0d0d0;
-}
-
-.btn-primary {
-  background: #667eea;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #5568d3;
-}
-
-.btn-primary:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-.qr-preview {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.preview-card {
-  text-align: center;
-}
-
-.preview-card h2 {
-  color: #4caf50;
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-}
-
-.employee-info {
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: #f5f5f5;
-  border-radius: 8px;
-}
-
-.employee-info h3 {
-  margin: 0 0 0.5rem 0;
-  color: #333;
-  font-size: 1.25rem;
-}
-
-.employee-info p {
-  margin: 0.25rem 0;
-  color: #666;
-}
-
-.phone {
-  font-family: monospace;
-  font-size: 1.1rem;
-}
-
-.qr-code {
-  margin: 2rem 0;
-  padding: 1.5rem;
-  background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  display: inline-block;
-}
-
-.qr-code img {
-  display: block;
-  max-width: 300px;
-  height: auto;
-}
-
-.qr-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 2rem;
-}
-
-.btn-success {
-  background: #4caf50;
-  color: white;
-  padding: 0.875rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-success:hover {
-  background: #45a049;
-}
-
-.qr-note {
-  margin-top: 1.5rem;
-  color: #666;
-  font-size: 0.9rem;
-  font-style: italic;
-}
-
-@media (max-width: 640px) {
-  .employee-create {
-    padding: 1rem;
-  }
-
-  .header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-
-  .form-actions,
-  .qr-actions {
-    flex-direction: column;
-  }
-
-  .qr-code img {
-    max-width: 250px;
-  }
-}
-</style>
