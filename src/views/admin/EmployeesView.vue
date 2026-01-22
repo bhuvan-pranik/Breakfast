@@ -75,8 +75,6 @@ const {
   paginatedItems: paginatedEmployees,
   currentPage,
   pageSize,
-  totalPages,
-  totalItems,
   rangeText,
   pageNumbers,
   nextPage,

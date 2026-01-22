@@ -7,20 +7,21 @@
 
 import type { PostgrestError } from '@supabase/supabase-js'
 import type {
-  AppError,
   SupabaseError,
   ErrorHandlerResult,
-  ErrorCategory,
-  ErrorSeverity,
   ErrorContext,
   ValidationError,
   AuthenticationError,
   AuthorizationError,
   NetworkError,
   DatabaseError,
-  BusinessLogicError
+  BusinessLogicError,
+  ErrorCategoryType,
+  ErrorSeverityType
 } from '@/types/errors.types'
 import {
+  ErrorCategory,
+  ErrorSeverity,
   SUPABASE_ERROR_CODES,
   ERROR_MESSAGES
 } from '@/types/errors.types'
@@ -71,12 +72,12 @@ export function getUserFriendlyMessage(error: unknown): string {
   
   // Check if we have a predefined message for this error code
   if (parsedError.code && ERROR_MESSAGES[parsedError.code]) {
-    return ERROR_MESSAGES[parsedError.code]
+    return ERROR_MESSAGES[parsedError.code] || 'An error occurred'
   }
 
   // Handle specific error patterns
   if (parsedError.message.toLowerCase().includes('duplicate')) {
-    return ERROR_MESSAGES[SUPABASE_ERROR_CODES.UNIQUE_VIOLATION]
+    return ERROR_MESSAGES[SUPABASE_ERROR_CODES.UNIQUE_VIOLATION] || 'Duplicate entry'
   }
 
   if (parsedError.message.toLowerCase().includes('not found')) {
@@ -85,22 +86,22 @@ export function getUserFriendlyMessage(error: unknown): string {
 
   if (parsedError.message.toLowerCase().includes('permission') || 
       parsedError.message.toLowerCase().includes('unauthorized')) {
-    return ERROR_MESSAGES[SUPABASE_ERROR_CODES.INSUFFICIENT_PRIVILEGE]
+    return ERROR_MESSAGES[SUPABASE_ERROR_CODES.INSUFFICIENT_PRIVILEGE] || 'Permission denied'
   }
 
   if (parsedError.message.toLowerCase().includes('network') ||
       parsedError.message.toLowerCase().includes('fetch')) {
-    return ERROR_MESSAGES[SUPABASE_ERROR_CODES.NETWORK_ERROR]
+    return ERROR_MESSAGES[SUPABASE_ERROR_CODES.NETWORK_ERROR] || 'Network error'
   }
 
   // Return original message if no match found
-  return parsedError.message || ERROR_MESSAGES.UNKNOWN
+  return parsedError.message || ERROR_MESSAGES.UNKNOWN || 'An unknown error occurred'
 }
 
 /**
  * Categorize error by type
  */
-export function categorizeError(error: unknown): ErrorCategory {
+export function categorizeError(error: unknown): ErrorCategoryType {
   const parsedError = parseSupabaseError(error)
   const code = parsedError.code?.toLowerCase() || ''
   const message = parsedError.message?.toLowerCase() || ''
@@ -149,7 +150,7 @@ export function categorizeError(error: unknown): ErrorCategory {
 /**
  * Determine error severity
  */
-export function getErrorSeverity(error: unknown): ErrorSeverity {
+export function getErrorSeverity(error: unknown): ErrorSeverityType {
   const category = categorizeError(error)
 
   switch (category) {
@@ -336,7 +337,7 @@ export function extractValidationErrors(error: unknown): Record<string, string[]
       if (typeof parsedError.details === 'string') {
         // Try to extract field name from details string
         const fieldMatch = parsedError.details.match(/column "(\w+)"/)
-        if (fieldMatch) {
+        if (fieldMatch && fieldMatch[1]) {
           fields[fieldMatch[1]] = [parsedError.message]
         }
       }
