@@ -5,7 +5,7 @@ import { RefreshCw } from 'lucide-vue-next'
 import { useToast } from '@/components/ui/toast/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { attendanceService } from '@/services/attendance.service'
-import { employeeService } from '@/services/employee.service'
+import { useEmployeeStore } from '@/stores/employee.store'
 import type { AttendanceRecord } from '@/types'
 
 // Import extracted components
@@ -15,6 +15,7 @@ import AttendanceSummaryTab from '@/components/admin/AttendanceSummaryTab.vue'
 import EmployeeReportTab from '@/components/admin/EmployeeReportTab.vue'
 
 const { toast } = useToast()
+const employeeStore = useEmployeeStore()
 
 // State
 const isLoading = ref(false)
@@ -114,8 +115,12 @@ const exportEmployeeCSV = () => {
   
   records.value.forEach(record => {
     if (!statsMap.has(record.employee_phone)) {
+      // Find employee name from store
+      const employee = employeeStore.employees.find(e => e.phone === record.employee_phone)
+      
       statsMap.set(record.employee_phone, {
         phone: record.employee_phone,
+        name: employee?.name || 'Unknown',
         totalScans: 0,
         successfulScans: 0,
         duplicateScans: 0
@@ -131,10 +136,10 @@ const exportEmployeeCSV = () => {
   // Calculate attendance rate
   const totalDays = new Set(records.value.map(r => r.scan_date)).size
   
-  let csv = 'Employee Phone,Total Scans,Successful Scans,Duplicate Scans,Attendance Rate\n'
+  let csv = 'Employee Name,Phone,Total Scans,Successful Scans,Duplicate Scans,Attendance Rate\n'
   statsMap.forEach(stats => {
     const attendanceRate = totalDays > 0 ? Math.round((stats.successfulScans / totalDays) * 100) : 0
-    csv += `${stats.phone},${stats.totalScans},${stats.successfulScans},${stats.duplicateScans},${attendanceRate}%\n`
+    csv += `${stats.name},${stats.phone},${stats.totalScans},${stats.successfulScans},${stats.duplicateScans},${attendanceRate}%\n`
   })
   
   const filename = `employee-report-${dateRange.value.start?.toISOString().split('T')[0]}-to-${dateRange.value.end?.toISOString().split('T')[0]}.csv`

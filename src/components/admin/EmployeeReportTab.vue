@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Download, Search, ArrowUpDown } from 'lucide-vue-next'
+import { useEmployeeStore } from '@/stores/employee.store'
 import type { AttendanceRecord } from '@/types'
 
 interface Props {
@@ -29,12 +30,19 @@ const emit = defineEmits<{
   (e: 'export'): void
 }>()
 
+const employeeStore = useEmployeeStore()
+
 // State
 const searchQuery = ref('')
-const sortBy = ref<keyof EmployeeStats>('totalScans')
-const sortOrder = ref<'asc' | 'desc'>('desc')
+const sortBy = ref<keyof EmployeeStats>('name')
+const sortOrder = ref<'asc' | 'desc'>('asc')
 const currentPage = ref(1)
 const pageSize = 10
+
+// Fetch employees on mount
+onMounted(async () => {
+  await employeeStore.fetchEmployees()
+})
 
 // Compute employee statistics
 const employeeStats = computed<EmployeeStats[]>(() => {
@@ -42,9 +50,12 @@ const employeeStats = computed<EmployeeStats[]>(() => {
   
   props.records.forEach(record => {
     if (!statsMap.has(record.employee_phone)) {
+      // Find employee name from store
+      const employee = employeeStore.employees.find(e => e.phone === record.employee_phone)
+      
       statsMap.set(record.employee_phone, {
         phone: record.employee_phone,
-        name: '', // Will be filled from employee service or first record
+        name: employee?.name || 'Unknown',
         totalScans: 0,
         successfulScans: 0,
         duplicateScans: 0,
@@ -196,8 +207,8 @@ const exportEmployeeReport = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>
-                  <Button variant="ghost" size="sm" @click="toggleSort('phone')">
-                    Phone
+                  <Button variant="ghost" size="sm" @click="toggleSort('name')">
+                    Employee Name
                     <ArrowUpDown class="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
@@ -232,8 +243,8 @@ const exportEmployeeReport = () => {
             <TableBody>
               <TableRow v-for="stat in paginatedStats" :key="stat.phone">
                 <TableCell class="font-medium">
-                  <div>{{ stat.phone }}</div>
-                  <div v-if="stat.name" class="text-xs text-muted-foreground">{{ stat.name }}</div>
+                  <div>{{ stat.name }}</div>
+                  <div class="text-xs text-muted-foreground">{{ stat.phone }}</div>
                 </TableCell>
                 <TableCell>{{ stat.totalScans }}</TableCell>
                 <TableCell>
