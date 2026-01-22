@@ -68,8 +68,9 @@ const formatDateTime = (date: string) => {
   })
 }
 
-const formatDateShort = (date: Date) => {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+const formatDateShort = (date: Date | string) => {
+  const dateObj = date instanceof Date ? date : new Date(date)
+  return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 const getStatusVariant = (status: string) => {

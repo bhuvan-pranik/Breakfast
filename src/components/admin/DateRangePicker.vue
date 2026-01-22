@@ -63,7 +63,10 @@ const setQuickRange = (type: string) => {
 }
 
 const apply = () => {
-  emit('update', { start: localStart.value, end: localEnd.value })
+  // Ensure dates are Date objects, not strings
+  const start = localStart.value ? (localStart.value instanceof Date ? localStart.value : new Date(localStart.value)) : null
+  const end = localEnd.value ? (localEnd.value instanceof Date ? localEnd.value : new Date(localEnd.value)) : null
+  emit('update', { start, end })
   isOpen.value = false
 }
 
@@ -85,7 +88,7 @@ const cancel = () => {
         <span v-else>Pick date range</span>
       </Button>
     </PopoverTrigger>
-    <PopoverContent class="w-auto p-0" align="end">
+    <PopoverContent class="w-auto p-0 max-h-[80vh] overflow-y-auto" align="end" side="top">
       <div class="p-3 space-y-3">
         <div class="space-y-2">
           <Label>Start Date</Label>
